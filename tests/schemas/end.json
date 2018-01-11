@@ -1,0 +1,43 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+        "update": {
+            "type": "object",
+            "properties": {
+                "props": {
+                    "type": "object",
+                    "properties": {
+                        "attachments": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "fileds": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "short": {"type": "boolean"},
+                                                "title": {"type": "string"},
+                                                "value": {"type": "string"}
+                                            },
+                                            "required": ["short", "title", "value"]
+                                        }
+                                    }
+                                },
+                                "required": ["fields"]
+                            }
+                        }
+                    },
+                    "required": ["attachments"]
+                }
+            },
+            "required": ["props"]
+        }
+    },
+    "required": ["update"]
+}

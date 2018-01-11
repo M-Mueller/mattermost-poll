@@ -1,0 +1,9 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+        "response_type": {"type": "string", "enum": ["ephemeral"]},
+        "text": {"type": "string", "minLength": 1}
+    },
+    "required": ["response_type", "text"]
+}

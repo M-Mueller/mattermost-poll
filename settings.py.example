@@ -1,0 +1,11 @@
+"""This file contains all user settings of the application"""
+
+
+# Path to the database file.
+DATABASE = 'polls.db'
+
+# Port of the webserver
+WEBSERVER_PORT = 5000
+
+# Optional Mattermost token
+MATTERMOST_TOKEN = None
