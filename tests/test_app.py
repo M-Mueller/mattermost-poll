@@ -131,9 +131,18 @@ class AppTest(unittest.TestCase):
             self.assertEqual(len(attachments), 1)
             self.assertIn('text', attachments[0])
             self.assertIn('actions', attachments[0])
-            self.assertNotIn('fields', attachments[0])
+            self.assertIn('fields', attachments[0])
             self.assertEqual(attachments[0]['text'], poll.message)
             self.assertEqual(len(attachments[0]['actions']), 4)
+
+            fields = attachments[0]['fields']
+            self.assertEqual(len(fields), 1)
+            self.assertIn('short', fields[0])
+            self.assertIn('title', fields[0])
+            self.assertIn('value', fields[0])
+            self.assertEqual(False, fields[0]['short'])
+            self.assertEqual("", fields[0]['title'])
+            self.assertEqual('*Number of Votes: 4*', fields[0]['value'])
 
         poll.end()
 
@@ -153,13 +162,21 @@ class AppTest(unittest.TestCase):
             self.assertEqual(attachments[0]['text'], poll.message)
 
             fields = attachments[0]['fields']
-            self.assertEqual(len(fields), 3)
+            self.assertEqual(len(fields), 4)
+
+            self.assertIn('short', fields[0])
+            self.assertIn('title', fields[0])
+            self.assertIn('value', fields[0])
+            self.assertEqual(False, fields[0]['short'])
+            self.assertEqual("", fields[0]['title'])
+            self.assertEqual('*Number of Votes: 4*', fields[0]['value'])
+
             expected = [
                 (poll.vote_options[0], '1 (25.0%)'),
                 (poll.vote_options[1], '1 (25.0%)'),
                 (poll.vote_options[2], '2 (50.0%)'),
             ]
-            for field, (title, value) in zip(fields, expected):
+            for field, (title, value) in zip(fields[1:], expected):
                 self.assertIn('short', field)
                 self.assertIn('title', field)
                 self.assertIn('value', field)

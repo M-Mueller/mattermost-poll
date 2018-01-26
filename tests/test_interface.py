@@ -61,9 +61,10 @@ class InterfaceTest(unittest.TestCase):
         """Validates the response when the vote ends."""
         jsonschema.validate(response_json, schemas.end)
 
-        # check if the message to the user contains the voted text
+        # check if all fields are there (content of fields is 
+        # tested in test_app)
         fields = response_json['update']['props']['attachments'][0]['fields']
-        self.assertEqual(len(fields), len(vote_options))
+        self.assertEqual(len(fields), len(vote_options) + 1)
 
     def test_poll(self):
         SubTest = namedtuple('SubTest', ['data', 'status_code',

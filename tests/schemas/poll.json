@@ -32,9 +32,22 @@
                             },
                             "required": ["name", "integration"]
                         }
+                    },
+                    "fields": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "short": {"type": "boolean"},
+                                "title": {"type": "string"},
+                                "value": {"type": "string"}
+                            },
+                            "required": ["short", "title", "value"]
+                        }
                     }
                 },
-                "required": ["text", "actions"]
+                "required": ["text", "actions", "fields"]
             }
         }
     },

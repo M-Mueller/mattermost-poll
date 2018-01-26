@@ -59,7 +59,12 @@ def get_poll(poll):
             'response_type': 'in_channel',
             'attachments': [{
                 'text': poll.message,
-                'actions': get_actions(poll)
+                'actions': get_actions(poll),
+                'fields': [{
+                    'short': False,
+                    'value': "*Number of Votes: {}*".format(poll.num_votes()),
+                    'title': ""
+                }]
             }]
         }
     else:
@@ -70,6 +75,11 @@ def get_poll(poll):
             'attachments': [{
                 'text': poll.message,
                 'fields': [{
+                    'short': False,
+                    'value': "*Number of Votes: {}*".format(poll.num_votes()),
+                    'title': ""
+                }] +
+                [{
                     'short': True,
                     'title': vote,
                     'value': _format_vote_count(poll, vote_count)
@@ -133,6 +143,12 @@ def poll():
                         "poll_id": "<unique_id>"
                     }
                 }
+            }],
+            "fields": [
+            {
+                "short": false,
+                "title": "",
+                "value": "Number of Votes: 1"
             }]
         }]
     }

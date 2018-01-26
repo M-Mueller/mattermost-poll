@@ -43,6 +43,12 @@ class SchemasTest(unittest.TestCase):
                                 "poll_id": "abc123"
                             }
                         }
+                    }],
+                    "fields": [
+                    {
+                        "short": false,
+                        "title": "",
+                        "value": "Number of Votes: 1"
                     }]
                 }]
             }
@@ -177,6 +183,11 @@ class SchemasTest(unittest.TestCase):
                         "attachments": [
                             {
                                 "fields": [
+                                    {
+                                        "short": false,
+                                        "title": "",
+                                        "value": "Number of Votes: 1"
+                                    },
                                     {
                                         "short": true,
                                         "title": "Spam",
