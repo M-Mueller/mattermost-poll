@@ -4,7 +4,7 @@
 # Path to the database file.
 DATABASE = 'polls.db'
 
-# Addres to listen on
+# Address to listen on
 WEBSERVER_ADDRESS = '0.0.0.0'
 
 # Port of the webserver
