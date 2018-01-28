@@ -8,7 +8,7 @@ import app
 import settings
 
 http_server = httpserver.HTTPServer(wsgi.WSGIContainer(app.app))
-http_server.listen(settings.WEBSERVER_PORT)
+http_server.listen(settings.WEBSERVER_PORT, address=settings.WEBSERVER_ADDRESS)
 ioloop.IOLoop.instance().start()
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
