@@ -11,5 +11,5 @@
         },
         "ephemeral_text": {"type": "string", "minLength": 1}
     },
-    "required": ["update", "ephemeral_text"]
+    "required": ["ephemeral_text"]
 }

@@ -12,6 +12,8 @@ Choices are separated by `--`.
 
 ### Additional options:
 - `--secret`: Do not display the number of votes until the poll is ended
+- `--votes=X`: Allows users to place a total of *X* votes. Default is 1. 
+  Each individual option can still only be voted once.
 
 Requirements
 ------------

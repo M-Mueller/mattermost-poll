@@ -50,18 +50,15 @@ class InterfaceTest(unittest.TestCase):
         """Validates the response after a vote."""
         jsonschema.validate(response_json, schemas.vote)
 
-        poll_json = response_json['update']['props']
-        self.__validate_reponse(poll_json, message, vote_options)
-
-        # check if the message to the user contains the voted text
-        message = response_json['ephemeral_text']
-        self.assertIn(vote_options[voted_id], message)
+        if 'update' in response_json:
+            poll_json = response_json['update']['props']
+            self.__validate_reponse(poll_json, message, vote_options)
 
     def __validate_end_response(self, response_json, message, vote_options):
         """Validates the response when the vote ends."""
         jsonschema.validate(response_json, schemas.end)
 
-        # check if all fields are there (content of fields is 
+        # check if all fields are there (content of fields is
         # tested in test_app)
         fields = response_json['update']['props']['attachments'][0]['fields']
         self.assertEqual(len(fields), len(vote_options) + 1)
@@ -91,7 +88,8 @@ class InterfaceTest(unittest.TestCase):
 
         for name, subTest in sub_tests.items():
             with self.subTest(name):
-                response = self.app.post('/', data=subTest.data, base_url=self.base_url)
+                response = self.app.post('/', data=subTest.data,
+                                         base_url=self.base_url)
                 self.assertEqual(subTest.status_code, response.status_code)
                 if subTest.status_code != 200:
                     continue
@@ -112,28 +110,49 @@ class InterfaceTest(unittest.TestCase):
             jsonschema.validate(rd, schemas.ephemeral)
 
     def test_vote(self):
-        SubTest = namedtuple('SubTest', ['votes', 'expected'])
+        SubTest = namedtuple('SubTest', ['max_votes', 'votes', 'expected'])
         subTests = {
             'One vote': SubTest(
+                1,
                 [('user2', 2)],
                 (0, 0, 1)
             ),
             'Three votes': SubTest(
+                1,
                 [('user0', 0), ('user1', 1), ('user2', 2)],
                 (1, 1, 1)
             ),
             'Changed vote': SubTest(
+                1,
                 [('user0', 0), ('user1', 1), ('user0', 1)],
                 (0, 2, 0)
+            ),
+            'Multi, three votes': SubTest(
+                2,
+                [('user0', 0), ('user1', 1), ('user0', 1)],
+                (1, 2, 0)
+            ),
+            'Multi, unvote': SubTest(
+                2,
+                [('user0', 0), ('user0', 1), ('user0', 1)],
+                (1, 0, 0)
+            ),
+            'Multi, overvote': SubTest(
+                2,
+                [('user0', 0), ('user0', 1), ('user0', 2)],
+                (1, 1, 0)
             ),
         }
 
         for name, subTest in subTests.items():
             with self.subTest(name):
+                command = '''Message --Spam --Foo --Bar
+                            --votes=''' + str(subTest.max_votes)
+
                 # create a new poll
                 data = {
                     'user_id': 'user0',
-                    'text': 'Message --Spam --Foo --Bar'
+                    'text': command
                 }
                 response = self.app.post('/', data=data, base_url=self.base_url)
                 rd = json.loads(response.data)
@@ -162,11 +181,12 @@ class InterfaceTest(unittest.TestCase):
                     self.__validate_vote_response(rd, 'Message',
                                                   ['Spam', 'Foo', 'Bar'], vote)
 
-                # check if the number of votes is contained in the actions name
-                actions = rd['update']['props']['attachments'][0]['actions']
-                self.assertEqual(len(actions), 4)
-                for action, num_votes in zip(actions, subTest.expected):
-                    self.assertIn(str(num_votes), action['name'])
+                if 'update' in rd:
+                    # check if the number of votes is contained in the actions name
+                    actions = rd['update']['props']['attachments'][0]['actions']
+                    self.assertEqual(len(actions), 4)
+                    for action, num_votes in zip(actions, subTest.expected):
+                        self.assertIn(str(num_votes), action['name'])
 
     def test_end(self):
         SubTest = namedtuple('SubTest', ['votes', 'expected'])

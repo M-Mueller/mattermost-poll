@@ -1,4 +1,5 @@
-from poll import Poll
+# -*- coding: utf-8 -*-
+from poll import Poll, NoMoreVotesError
 from flask import Flask, request, jsonify, url_for, abort
 from collections import namedtuple
 import settings
@@ -55,16 +56,24 @@ def get_poll(poll):
     """Returns the JSON representation of the given poll.
     """
     if not poll.is_finished():
+        fields = [{
+            'short': False,
+            'value': "*Number of voters: {}*".format(poll.num_voters()),
+            'title': ""
+        }]
+        if poll.max_votes > 1:
+            fields += [{
+                'short': False,
+                'value': "*You have {} votes*".format(poll.max_votes),
+                'title': ""
+            }]
+
         return {
             'response_type': 'in_channel',
             'attachments': [{
                 'text': poll.message,
                 'actions': get_actions(poll),
-                'fields': [{
-                    'short': False,
-                    'value': "*Number of Votes: {}*".format(poll.num_votes()),
-                    'title': ""
-                }]
+                'fields': fields
             }]
         }
     else:
@@ -76,7 +85,7 @@ def get_poll(poll):
                 'text': poll.message,
                 'fields': [{
                     'short': False,
-                    'value': "*Number of Votes: {}*".format(poll.num_votes()),
+                    'value': "*Number of voters: {}*".format(poll.num_voters()),
                     'title': ""
                 }] +
                 [{
@@ -86,6 +95,20 @@ def get_poll(poll):
                 } for vote, vote_count in votes]
             }]
         }
+
+
+def vote_to_string(poll, user_id):
+    """Returns the vote of the given user as a string.
+       Example: 'Pizza ✓, Burger ✗, Extra Cheese ✓'"""
+    string = ''
+    for vote_id, vote in enumerate(poll.vote_options):
+        string += vote
+        if vote_id in poll.votes(user_id):
+            string += ' ✓'
+        else:
+            string += ' ✗'
+        string += ', '
+    return string[:-2]  # remove trailing ,
 
 
 def parse_slash_command(command):
@@ -99,6 +122,7 @@ def parse_slash_command(command):
     """
     args = [arg.strip() for arg in command.split('--')]
     secret = False
+    max_votes = 1
     try:
         i = [a.lower() for a in args].index('secret')
         args.pop(i)
@@ -106,11 +130,21 @@ def parse_slash_command(command):
     except:
         pass
 
-    Arguments = namedtuple('Arguments', ['message', 'vote_options', 'secret'])
+    try:
+        votes = [a for a in enumerate(args) if 'votes' in a[1].lower()]
+        if len(votes) > 0:
+            args.pop(votes[0][0])
+            max_votes = int(votes[0][1].split('=')[1])
+            max_votes = max(1, max_votes)
+    except:
+        pass
+
+    Arguments = namedtuple('Arguments', ['message', 'vote_options',
+                                         'secret', 'max_votes'])
     if args:
-        return Arguments(args[0], args[1:], secret)
+        return Arguments(args[0], args[1:], secret, max_votes)
     else:
-        return Arguments('', [], secret)
+        return Arguments('', [], secret, max_votes)
 
 
 @app.route('/', methods=['POST'])
@@ -159,7 +193,7 @@ def poll():
         if token != settings.MATTERMOST_TOKEN:
             return jsonify({
                 'response_type': 'ephemeral',
-                'text': "The integration is not correctly set up. Token not valid."
+                'text': "The integration is not correctly set up: Invalid token."
             })
 
     if 'user_id' not in request.form:
@@ -175,7 +209,8 @@ def poll():
             'text': "Please provide a message"
         })
 
-    poll = Poll.create(user_id, args.message, args.vote_options, args.secret)
+    poll = Poll.create(user_id, args.message, args.vote_options,
+                       args.secret, args.max_votes)
 
     app.logger.info('Creating Poll: %s', poll.id)
 
@@ -196,14 +231,22 @@ def vote():
 
     poll = Poll.load(poll_id)
 
-    app.logger.info('Voting in poll "%s" for user "%s": %i', poll_id, user_id, vote_id)
-    poll.vote(user_id, vote_id)
+    app.logger.info('Voting in poll "%s" for user "%s": %i',
+                    poll_id, user_id, vote_id)
+    try:
+        poll.vote(user_id, vote_id)
+    except NoMoreVotesError:
+        return jsonify({
+            'ephemeral_text': "You already used all your votes.\n"
+                              "Click on a vote to unselect it again."
+        })
 
     return jsonify({
         'update': {
             'props': get_poll(poll)
         },
-        'ephemeral_text': "Your vote has been updated to '{}'".format(poll.vote_options[vote_id])
+        'ephemeral_text': "Your vote has been updated:\n{}"
+                          .format(vote_to_string(poll, user_id))
     })
 
 
