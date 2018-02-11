@@ -12,3 +12,11 @@ WEBSERVER_PORT = 5000
 
 # Optional Mattermost token
 MATTERMOST_TOKEN = None
+
+# URL of the Mattermost server
+MATTERMOST_URL = 'http://localhost'
+
+# Private access token of some user.
+# Required to resolve username in 'public' polls.
+# https://docs.mattermost.com/developer/personal-access-tokens.html
+MATTERMOST_PA_TOKEN = None

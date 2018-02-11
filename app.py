@@ -4,6 +4,8 @@ from flask import Flask, request, jsonify, url_for, abort
 from collections import namedtuple
 import settings
 import logging
+import requests
+import json
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
@@ -42,14 +44,46 @@ def get_actions(poll):
     return actions
 
 
-def _format_vote_count(poll, vote_count):
-    """Returns the number of votes as a string for display."""
+def resolve_usernames(user_ids):
+    try:
+        header = {'Authorization': 'Bearer ' + settings.MATTERMOST_PA_TOKEN}
+        url = settings.MATTERMOST_URL + '/api/v4/users'
+
+        r = requests.get(url, headers=header)
+        if r.ok:
+            users = {}
+            for user in json.loads(r.text):
+                users[user['id']] = user['username']
+
+            usernames = []
+            for user_id in user_ids:
+                if user_id in users:
+                    usernames.append(users[user_id])
+                else:
+                    usernames.append('<unknown>')
+            return usernames
+    except Exception as e:
+        app.logger.error('Username query failed: ' + str(e))
+
+    return ['<Failed to resolve usernames>']
+
+
+def _format_vote_end_text(poll, vote_id):
+    vote_count = poll.count_votes(vote_id)
     total_votes = poll.num_votes()
     if total_votes != 0:
         rel_vote_count = 100*vote_count/total_votes
     else:
         rel_vote_count = 0.0
-    return '{} ({:.1f}%)'.format(vote_count, rel_vote_count)
+    text = '{} ({:.1f}%)'.format(vote_count, rel_vote_count)
+
+    if poll.public:
+        voters = resolve_usernames(poll.voters(vote_id))
+
+        if len(voters):
+            text += '\n' + ', '.join(voters)
+
+    return text
 
 
 def get_poll(poll):
@@ -77,7 +111,7 @@ def get_poll(poll):
             }]
         }
     else:
-        votes = [(vote, poll.count_votes(vote_id)) for vote_id, vote in
+        votes = [(vote, vote_id) for vote_id, vote in
                  enumerate(poll.vote_options)]
         return {
             'response_type': 'in_channel',
@@ -91,8 +125,8 @@ def get_poll(poll):
                 [{
                     'short': True,
                     'title': vote,
-                    'value': _format_vote_count(poll, vote_count)
-                } for vote, vote_count in votes]
+                    'value': _format_vote_end_text(poll, vote_id)
+                } for vote, vote_id in votes]
             }]
         }
 
@@ -122,11 +156,19 @@ def parse_slash_command(command):
     """
     args = [arg.strip() for arg in command.split('--')]
     secret = False
+    public = False
     max_votes = 1
     try:
-        i = [a.lower() for a in args].index('secret')
+        i = [a for a in args].index('secret')
         args.pop(i)
         secret = True
+    except:
+        pass
+
+    try:
+        i = [a for a in args].index('public')
+        args.pop(i)
+        public = True
     except:
         pass
 
@@ -140,11 +182,11 @@ def parse_slash_command(command):
         pass
 
     Arguments = namedtuple('Arguments', ['message', 'vote_options',
-                                         'secret', 'max_votes'])
+                                         'secret', 'public', 'max_votes'])
     if args:
-        return Arguments(args[0], args[1:], secret, max_votes)
+        return Arguments(args[0], args[1:], secret, public, max_votes)
     else:
-        return Arguments('', [], secret, max_votes)
+        return Arguments('', [], secret, public, max_votes)
 
 
 @app.route('/', methods=['POST'])
@@ -208,9 +250,21 @@ def poll():
             'response_type': 'ephemeral',
             'text': "Please provide a message"
         })
+    if args.public:
+        if not settings.MATTERMOST_URL or not settings.MATTERMOST_PA_TOKEN:
+            return jsonify({
+                'response_type': 'ephemeral',
+                'text': "Public polls are not available with the "
+                        "current setup. Please check with you "
+                        "system administrator."
+            })
 
-    poll = Poll.create(user_id, args.message, args.vote_options,
-                       args.secret, args.max_votes)
+    poll = Poll.create(user_id,
+                       message=args.message,
+                       vote_options=args.vote_options,
+                       secret=args.secret,
+                       public=args.public,
+                       max_votes=args.max_votes)
 
     app.logger.info('Creating Poll: %s', poll.id)
 

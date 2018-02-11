@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
+from unittest.mock import patch
 import app
 import settings
 from poll import Poll
@@ -17,25 +18,31 @@ class AppTest(unittest.TestCase):
 
         commands = [
             'Some message --Option 1 --Second Option',
+            'Some message --Foo --Spam --secret',
             'Some message --Foo --Spam --Secret',
+            'Some message --Foo --Spam --public',
+            'Some message --Foo --Spam --Public',
             '# heading\nSome **markup**<br>:tada: --More ~~markup~~ --:tada: --Spam-!',
-            'No whitespace--Foo--Bar--Spam--secret',
-            '   Trim  whitespace   --   Foo-- Spam  Spam  --secret',
+            'No whitespace--Foo--Bar--Spam--secret--public',
+            '   Trim  whitespace   --   Foo-- Spam  Spam  -- secret',
             'Some message --Foo --Spam --secret --votes=3',
             'Some message --votes=-1 --Foo --Spam',
             'Some message --votes=0 --Foo --Spam',
         ]
         expected = [
-            ('Some message', ['Option 1', 'Second Option'], False, 1),
-            ('Some message', ['Foo', 'Spam'], True, 1),
+            ('Some message', ['Option 1', 'Second Option'], False, False, 1),
+            ('Some message', ['Foo', 'Spam'], True, False, 1),
+            ('Some message', ['Foo', 'Spam', 'Secret'], False, False, 1),
+            ('Some message', ['Foo', 'Spam'], False, True, 1),
+            ('Some message', ['Foo', 'Spam', 'Public'], False, False, 1),
             ('# heading\nSome **markup**<br>:tada:',
              ['More ~~markup~~', ':tada:', 'Spam-!'],
-             False, 1),
-            ('No whitespace', ['Foo', 'Bar', 'Spam'], True, 1),
-            ('Trim  whitespace', ['Foo', 'Spam  Spam'], True, 1),
-            ('Some message', ['Foo', 'Spam'], True, 3),
-            ('Some message', ['Foo', 'Spam'], False, 1),
-            ('Some message', ['Foo', 'Spam'], False, 1),
+             False, False, 1),
+            ('No whitespace', ['Foo', 'Bar', 'Spam'], True, True, 1),
+            ('Trim  whitespace', ['Foo', 'Spam  Spam'], True, False, 1),
+            ('Some message', ['Foo', 'Spam'], True, False, 3),
+            ('Some message', ['Foo', 'Spam'], False, False, 1),
+            ('Some message', ['Foo', 'Spam'], False, False, 1),
         ]
 
         for c, e in zip(commands, expected):
@@ -44,7 +51,8 @@ class AppTest(unittest.TestCase):
                 self.assertEqual(args.message, e[0])
                 self.assertEqual(args.vote_options, e[1])
                 self.assertEqual(args.secret, e[2])
-                self.assertEqual(args.max_votes, e[3])
+                self.assertEqual(args.public, e[3])
+                self.assertEqual(args.max_votes, e[4])
 
     def test_get_actions(self):
         poll = Poll.create(creator_id='user0', message='Message',
@@ -148,7 +156,11 @@ class AppTest(unittest.TestCase):
             self.assertEqual(app.vote_to_string(poll, 'user2'),
                              'Sure ✗, Maybe ✗, No ✗')
 
-    def test_get_poll(self):
+    def resolve_usernames(user_ids):
+        return user_ids
+
+    @patch('app.resolve_usernames', side_effect=resolve_usernames)
+    def test_get_poll(self, resolve_usernames):
         with self.subTest('Running poll'):
             poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
                                vote_options=['Sure', 'Maybe', 'No'], secret=False)
@@ -266,3 +278,52 @@ class AppTest(unittest.TestCase):
                 self.assertEqual(True, field['short'])
                 self.assertEqual(title, field['title'])
                 self.assertEqual(value, field['value'])
+
+        with self.subTest('Finished public poll'):
+            poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
+                               vote_options=['Sure', 'Maybe', 'No'],
+                               public=True)
+            poll.vote('user0', 0)
+            poll.vote('user1', 1)
+            poll.vote('user2', 2)
+            poll.vote('user3', 2)
+            poll.end()
+
+            with app.app.test_request_context(base_url='http://localhost:5005'):
+                poll_dict = app.get_poll(poll)
+
+            self.assertIn('response_type', poll_dict)
+            self.assertIn('attachments', poll_dict)
+
+            self.assertEqual(poll_dict['response_type'], 'in_channel')
+            attachments = poll_dict['attachments']
+            self.assertEqual(len(attachments), 1)
+            self.assertIn('text', attachments[0])
+            self.assertNotIn('actions', attachments[0])
+            self.assertIn('fields', attachments[0])
+            self.assertEqual(attachments[0]['text'], poll.message)
+
+            fields = attachments[0]['fields']
+            self.assertEqual(len(fields), 4)
+
+            self.assertIn('short', fields[0])
+            self.assertIn('title', fields[0])
+            self.assertIn('value', fields[0])
+            self.assertEqual(False, fields[0]['short'])
+            self.assertEqual("", fields[0]['title'])
+            self.assertEqual('*Number of voters: 4*', fields[0]['value'])
+
+            expected = [
+                (poll.vote_options[0], '1 (25.0%)', ['user0']),
+                (poll.vote_options[1], '1 (25.0%)', ['user1']),
+                (poll.vote_options[2], '2 (50.0%)', ['user2', 'user3']),
+            ]
+            for field, (title, value, users) in zip(fields[1:], expected):
+                self.assertIn('short', field)
+                self.assertIn('title', field)
+                self.assertIn('value', field)
+                self.assertEqual(True, field['short'])
+                self.assertEqual(title, field['title'])
+                self.assertIn(value, field['value'])
+                for user in users:
+                    self.assertIn(user, field['value'])

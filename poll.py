@@ -25,6 +25,9 @@ class Poll:
         A list of all available poll choices.
     secret: boolean
         A secret poll does not show the number of votes until the poll ended.
+    public: boolean
+        In a public vote, who voted for what is displayed at the end of the
+        poll
     max_votes: int
         Number of votes each user has.
     """
@@ -42,14 +45,15 @@ class Poll:
                        ORDER BY number ASC""", (self.id,)):
             self.vote_options.append(name)
 
-        cur.execute("""SELECT creator, message, secret, max_votes FROM Polls
+        cur.execute("""SELECT creator, message,
+                              secret, public, max_votes FROM Polls
                        WHERE poll_id=?""", (self.id,))
         (self.creator_id, self.message,
-         self.secret, self.max_votes) = cur.fetchone()
+         self.secret, self.public, self.max_votes) = cur.fetchone()
 
     @classmethod
     def create(cls, creator_id, message, vote_options=[],
-               secret=False, max_votes=1):
+               secret=False, public=False, max_votes=1):
         con = sqlite3.connect(settings.DATABASE)
         cur = con.cursor()
         cur.execute("""CREATE TABLE IF NOT EXISTS Polls (
@@ -58,6 +62,7 @@ class Poll:
                        message text NOT NULL,
                        finished integer NOT NULL,
                        secret integer NOT NULL,
+                       public integer NOT NULL,
                        max_votes integer NOT NULL)""")
         cur.execute("""CREATE TABLE IF NOT EXISTS VoteOptions (
                        poll_id integer REFERENCES Polls (poll_id)
@@ -79,9 +84,11 @@ class Poll:
         max_votes = max(1, min(max_votes, len(vote_options)))
 
         cur.execute("""INSERT INTO Polls
-                       (creator, message, finished, secret, max_votes) VALUES
-                       (?, ?, ?, ?, ?)""",
-                    (creator_id, message, False, secret, max_votes))
+                       (creator, message, finished,
+                        secret, public, max_votes) VALUES
+                       (?, ?, ?, ?, ?, ?)""",
+                    (creator_id, message, False,
+                     secret, public, max_votes))
         id = cur.lastrowid
         for number, name in enumerate(vote_options):
             cur.execute("""INSERT INTO VoteOptions
@@ -122,6 +129,14 @@ class Poll:
                        WHERE poll_id=? AND vote=?""",
                     (self.id, vote_id))
         return len(cur.fetchall())
+
+    def voters(self, vote_id):
+        """Returns all voters for a given vote_id."""
+        cur = self.connection.cursor()
+        cur.execute("""SELECT voter FROM Votes
+                       WHERE poll_id=? AND vote=?""",
+                    (self.id, vote_id))
+        return [voter[0] for voter in cur.fetchall()]
 
     def votes(self, user_id):
         """Returns a list of `vote_id`s the user voted for.
