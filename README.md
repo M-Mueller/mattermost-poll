@@ -51,10 +51,14 @@ and add the following to the ```services``` section:
     build:
       context: poll
       args:
+        - mattermost_url="<mattermost-server-url>"
         - mattermost_token="<mattermost-token>"
+        - mattermost_pa_token="<personal-access-token>"
     ports:
       - "5000:5000"
     restart: unless-stopped
+    volumes:
+      - ./volumes/poll:/app/volume:rw
 ```
 
 In Mattermost use *http://poll:5000/* as the request url. *poll* needs to be added to "AllowedUntrustedInternalConnections" in the Mattermost *config.json*.
