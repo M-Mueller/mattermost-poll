@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from poll import Poll, NoMoreVotesError
+from poll import Poll, NoMoreVotesError, InvalidPollError
 from flask import Flask, request, jsonify, url_for, abort
 from collections import namedtuple
 import settings
@@ -146,6 +146,8 @@ def parse_slash_command(command):
         - message: str
         - vote_options: list of str
         - secret: boolean
+        - public: boolean
+        - num_votes: int
     """
     args = [arg.strip() for arg in command.split('--')]
     secret = False
@@ -276,7 +278,13 @@ def vote():
     poll_id = json['context']['poll_id']
     vote_id = json['context']['vote']
 
-    poll = Poll.load(poll_id)
+    try:
+        poll = Poll.load(poll_id)
+    except InvalidPollError:
+        return jsonify({
+            'ephemeral_text': "This poll is not valid anymore.\n"
+                              "Sorry for the inconvenience."
+        })
 
     app.logger.info('Voting in poll "%s" for user "%s": %i',
                     poll_id, user_id, vote_id)
@@ -308,7 +316,13 @@ def end_poll():
     user_id = json['user_id']
     poll_id = json['context']['poll_id']
 
-    poll = Poll.load(poll_id)
+    try:
+        poll = Poll.load(poll_id)
+    except InvalidPollError:
+        return jsonify({
+            'ephemeral_text': "This poll is not valid anymore.\n"
+                              "Sorry for the inconvenience."
+        })
 
     app.logger.info('Ending poll "%s"', poll_id)
     if user_id == poll.creator_id:

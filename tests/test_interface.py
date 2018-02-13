@@ -243,3 +243,39 @@ class InterfaceTest(unittest.TestCase):
 
                 rd = json.loads(response.data)
                 self.__validate_end_response(rd, 'Message', ['Spam', 'Foo', 'Bar'])
+
+    def test_vote_invalid_poll(self):
+        data = json.dumps({
+            'user_id': 'user0',
+            'context': {
+                'poll_id': 'invalid123',
+                'vote': 0
+            }
+        })
+        response = self.app.post('/vote',
+                                 data=data,
+                                 content_type='application/json',
+                                 base_url=self.base_url)
+        self.assertEqual(200, response.status_code)
+
+        rd = json.loads(response.data)
+        self.assertNotIn('update', rd)
+        self.assertIn('ephemeral_text', rd)
+
+    def test_end_invalid_poll(self):
+        data = json.dumps({
+            'user_id': 'user0',
+            'context': {
+                'poll_id': 'invalid123',
+                'vote': 0
+            }
+        })
+        response = self.app.post('/end',
+                                 data=data,
+                                 content_type='application/json',
+                                 base_url=self.base_url)
+        self.assertEqual(200, response.status_code)
+
+        rd = json.loads(response.data)
+        self.assertNotIn('update', rd)
+        self.assertIn('ephemeral_text', rd)

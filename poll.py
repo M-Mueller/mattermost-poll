@@ -7,6 +7,11 @@ class NoMoreVotesError(Exception):
     pass
 
 
+class InvalidPollError(Exception):
+    """Raised when Poll creation or loading failed."""
+    pass
+
+
 class Poll:
     """The Poll class represents a single poll with a message and multiple
     options.
@@ -32,28 +37,46 @@ class Poll:
         Number of votes each user has.
     """
     def __init__(self, connection, id):
-        """Creates a new poll without any votes.
-        Empty vote_options will be replaced by ['Yes', 'No'].
+        """Loads the poll with `id` from the database connection.
+        Use `create` or `load` instead.
         """
         self.connection = connection
+        self.connection.row_factory = sqlite3.Row
         self.id = id
 
-        self.vote_options = []
-        cur = self.connection.cursor()
-        for (name,) in cur.execute("""SELECT name FROM VoteOptions
-                       WHERE poll_id=?
-                       ORDER BY number ASC""", (self.id,)):
-            self.vote_options.append(name)
+        try:
+            self.vote_options = []
+            cur = self.connection.cursor()
+            for (name,) in cur.execute("""SELECT name FROM VoteOptions
+                           WHERE poll_id=?
+                           ORDER BY number ASC""", (self.id,)):
+                self.vote_options.append(name)
 
-        cur.execute("""SELECT creator, message,
-                              secret, public, max_votes FROM Polls
-                       WHERE poll_id=?""", (self.id,))
-        (self.creator_id, self.message,
-         self.secret, self.public, self.max_votes) = cur.fetchone()
+            if not self.vote_options:
+                raise InvalidPollError()
+
+            cur.execute("""SELECT creator, message,
+                                  secret, public, max_votes FROM Polls
+                           WHERE poll_id=?""", (self.id,))
+            row = cur.fetchone()
+            if not row:
+                raise InvalidPollError()
+
+            self.creator_id = row['creator']
+            self.message = row['message']
+            self.secret = row['secret']
+            self.public = row['public']
+            self.max_votes = row['max_votes']
+
+        except sqlite3.Error as e:
+            raise InvalidPollError() from e
 
     @classmethod
     def create(cls, creator_id, message, vote_options=[],
                secret=False, public=False, max_votes=1):
+        """Creates a new poll without any votes.
+        Empty vote_options will be replaced by ['Yes', 'No'].
+        """
         con = sqlite3.connect(settings.DATABASE)
         cur = con.cursor()
         cur.execute("""CREATE TABLE IF NOT EXISTS Polls (
@@ -100,6 +123,10 @@ class Poll:
 
     @classmethod
     def load(cls, id):
+        """Loads a poll from the database.
+        Raise a InvalidPollError if no poll with that id
+        exists.
+        """
         con = sqlite3.connect(settings.DATABASE)
         return cls(con, id)
 

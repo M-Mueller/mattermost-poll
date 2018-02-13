@@ -1,6 +1,6 @@
 import unittest
 import settings
-from poll import Poll, NoMoreVotesError
+from poll import Poll, NoMoreVotesError, InvalidPollError
 
 
 class PollTest(unittest.TestCase):
@@ -171,3 +171,25 @@ class PollTest(unittest.TestCase):
         self.assertEqual(poll.count_votes(0), 1)
         self.assertEqual(poll.count_votes(1), 0)
         self.assertEqual(poll.count_votes(2), 2)
+
+    def test_load(self):
+        poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'],
+                           secret=True, public=True, max_votes=2)
+
+        # because of :memory: database, load() cannot be used directly
+        poll2 = Poll(poll.connection, poll.id)
+        self.assertEqual(poll.creator_id, poll2.creator_id)
+        self.assertEqual(poll.message, poll2.message)
+        self.assertEqual(poll.secret, poll2.secret)
+        self.assertEqual(poll.public, poll2.public)
+        self.assertEqual(poll.max_votes, poll2.max_votes)
+        self.assertEqual(poll.vote_options, poll2.vote_options)
+
+    def test_load_invalid(self):
+        with self.assertRaises(InvalidPollError):
+            Poll.load('bla')
+
+        with self.assertRaises(InvalidPollError):
+            poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'],
+                               secret=True, public=True, max_votes=2)
+            Poll(poll.connection, 'user3210')
