@@ -45,23 +45,16 @@ def get_actions(poll):
 
 
 def resolve_usernames(user_ids):
+    if len(user_ids) == 0:
+        return []
+
     try:
         header = {'Authorization': 'Bearer ' + settings.MATTERMOST_PA_TOKEN}
-        url = settings.MATTERMOST_URL + '/api/v4/users'
+        url = settings.MATTERMOST_URL + '/api/v4/users/ids'
 
-        r = requests.get(url, headers=header)
+        r = requests.post(url, headers=header, json=user_ids)
         if r.ok:
-            users = {}
-            for user in json.loads(r.text):
-                users[user['id']] = user['username']
-
-            usernames = []
-            for user_id in user_ids:
-                if user_id in users:
-                    usernames.append(users[user_id])
-                else:
-                    usernames.append('<unknown>')
-            return usernames
+            return [user["username"] for user in json.loads(r.text)]
     except Exception as e:
         app.logger.error('Username query failed: ' + str(e))
 
