@@ -1,0 +1,12 @@
+language: python
+python:
+ - "3.4"
+install:
+ - pip install -r requirements.txt
+ - pip install -r tests/requirements.txt
+ - pip install codecov
+script:
+ - cp settings.py.example settings.py
+ - python3 -m "nose" --with-coverage --cover-package=app --cover-package=poll --cover-xml
+after_success:
+ - codecov

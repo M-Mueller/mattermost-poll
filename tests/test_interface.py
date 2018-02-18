@@ -94,7 +94,7 @@ class InterfaceTest(unittest.TestCase):
                 if subTest.status_code != 200:
                     continue
 
-                rd = json.loads(response.data)
+                rd = json.loads(response.data.decode('utf-8'))
                 self.__validate_reponse(rd, subTest.message,
                                         subTest.vote_options)
 
@@ -106,7 +106,7 @@ class InterfaceTest(unittest.TestCase):
             response = self.app.post('/', data=data, base_url=self.base_url)
             self.assertEqual(200, response.status_code)
 
-            rd = json.loads(response.data)
+            rd = json.loads(response.data.decode('utf-8'))
             jsonschema.validate(rd, schemas.ephemeral)
 
     def test_vote(self):
@@ -155,7 +155,7 @@ class InterfaceTest(unittest.TestCase):
                     'text': command
                 }
                 response = self.app.post('/', data=data, base_url=self.base_url)
-                rd = json.loads(response.data)
+                rd = json.loads(response.data.decode('utf-8'))
 
                 actions = rd['attachments'][0]['actions']
                 self.assertEqual(len(actions), 4)
@@ -177,7 +177,7 @@ class InterfaceTest(unittest.TestCase):
                                              base_url=self.base_url)
                     self.assertEqual(200, response.status_code)
 
-                    rd = json.loads(response.data)
+                    rd = json.loads(response.data.decode('utf-8'))
                     self.__validate_vote_response(rd, 'Message',
                                                   ['Spam', 'Foo', 'Bar'], vote)
 
@@ -209,7 +209,7 @@ class InterfaceTest(unittest.TestCase):
                     'text': 'Message --Spam --Foo --Bar'
                 }
                 response = self.app.post('/', data=data, base_url=self.base_url)
-                rd = json.loads(response.data)
+                rd = json.loads(response.data.decode('utf-8'))
 
                 actions = rd['attachments'][0]['actions']
                 self.assertEqual(len(actions), 4)
@@ -241,7 +241,7 @@ class InterfaceTest(unittest.TestCase):
                                          base_url=self.base_url)
                 self.assertEqual(200, response.status_code)
 
-                rd = json.loads(response.data)
+                rd = json.loads(response.data.decode('utf-8'))
                 self.__validate_end_response(rd, 'Message', ['Spam', 'Foo', 'Bar'])
 
     def test_vote_invalid_poll(self):
@@ -258,7 +258,7 @@ class InterfaceTest(unittest.TestCase):
                                  base_url=self.base_url)
         self.assertEqual(200, response.status_code)
 
-        rd = json.loads(response.data)
+        rd = json.loads(response.data.decode('utf-8'))
         self.assertNotIn('update', rd)
         self.assertIn('ephemeral_text', rd)
 
@@ -276,6 +276,32 @@ class InterfaceTest(unittest.TestCase):
                                  base_url=self.base_url)
         self.assertEqual(200, response.status_code)
 
-        rd = json.loads(response.data)
+        rd = json.loads(response.data.decode('utf-8'))
         self.assertNotIn('update', rd)
         self.assertIn('ephemeral_text', rd)
+
+    def test_help(self):
+        data = {
+            'user_id': 'user0',
+            'text': 'help',
+            'command': '/foo',
+        }
+        response = self.app.post('/', data=data, base_url=self.base_url)
+        self.assertEqual(200, response.status_code)
+
+        rd = json.loads(response.data.decode('utf-8'))
+        jsonschema.validate(rd, schemas.ephemeral)
+
+        self.assertIn('/foo', rd['text'])
+
+        # Only a single help shows the help text
+        data = {
+            'user_id': 'user0',
+            'text': 'help me',
+            'command': '/foo',
+        }
+        response = self.app.post('/', data=data, base_url=self.base_url)
+        self.assertEqual(200, response.status_code)
+
+        rd = json.loads(response.data.decode('utf-8'))
+        self.assertNotEqual(rd['response_type'], 'ephemeral')

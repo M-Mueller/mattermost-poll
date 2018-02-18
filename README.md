@@ -1,5 +1,7 @@
 Mattermost Poll
 ===============
+![build](https://travis-ci.org/M-Mueller/mattermost-poll.svg?branch=master) [![codecov](https://codecov.io/gh/M-Mueller/mattermost-poll/branch/master/graph/badge.svg)](https://codecov.io/gh/M-Mueller/mattermost-poll)
+
 Provides a slash command to create polls in Mattermost.
 
 ![Example](/doc/example_yes_no.gif)
