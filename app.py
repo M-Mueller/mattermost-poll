@@ -6,9 +6,18 @@ import settings
 import logging
 import requests
 import json
+import os.path
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
+
+
+def get_help(command):
+    """Returns a help string describing the poll slash command."""
+    help_file = os.path.join(os.path.dirname(__file__), 'help.md')
+    with open(help_file) as f:
+        return f.read().format(command=command)
+    return "Help file not found."""
 
 
 def get_actions(poll):
@@ -238,6 +247,12 @@ def poll():
     if 'text' not in request.form:
         abort(400)
     user_id = request.form['user_id']
+
+    if request.form['text'].strip() == 'help':
+        return jsonify({
+            'response_type': 'ephemeral',
+            'text': get_help(request.form['command'])
+        })
 
     args = parse_slash_command(request.form['text'])
     if not args.message:
