@@ -227,13 +227,3 @@ class Poll:
         cur.execute("""SELECT finished FROM Polls WHERE poll_id=?""",
                     (self.id,))
         return cur.fetchone()[0] == 1
-
-
-if __name__ == '__main__':
-    poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'])
-    poll.vote('user0', 0)
-    poll.vote('user1', 2)
-    poll.vote('user2', 2)
-    poll.vote('user0', 1)
-
-    print(poll.votes('user0'))

@@ -3,13 +3,11 @@ from poll import Poll, NoMoreVotesError, InvalidPollError
 from flask import Flask, request, jsonify, url_for, abort
 from collections import namedtuple
 import settings
-import logging
 import requests
 import json
 import os.path
 
 app = Flask(__name__)
-app.logger.setLevel(logging.INFO)
 
 
 def get_help(command):

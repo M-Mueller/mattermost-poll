@@ -53,7 +53,7 @@ and add the following to the ```services``` section:
     build:
       context: poll
       args:
-        - mattermost_url="<mattermost-server-url>"
+        - mattermost_url="http://web"
         - mattermost_token="<mattermost-token>"
         - mattermost_pa_token="<personal-access-token>"
     ports:
