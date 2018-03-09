@@ -1,0 +1,7 @@
+[MESSAGES CONTROL]
+
+disable=redefined-outer-name,
+        broad-except,
+        bare-except,
+        invalid-name,
+        len-as-condition,

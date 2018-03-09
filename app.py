@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
-from poll import Poll, NoMoreVotesError, InvalidPollError
-from flask import Flask, request, jsonify, url_for, abort
-from collections import namedtuple
-import settings
-import requests
+import warnings
 import json
 import os.path
+from collections import namedtuple
+
+import requests
+from flask import Flask, request, jsonify, url_for, abort
+
+from poll import Poll, NoMoreVotesError, InvalidPollError
+import settings
 
 app = Flask(__name__)
 
@@ -29,29 +32,30 @@ def get_actions(poll):
         # display current number of votes
         name += " ({votes})"
     actions = [{
-                'name': name.format(name=vote, votes=poll.count_votes(vote_id)),
-                'integration': {
-                    'url': url_for('vote', _external=True),
-                    'context': {
-                        'vote': vote_id,
-                        'poll_id': poll.id
-                    }
-                }
-            } for vote_id, vote in enumerate(options)]
+        'name': name.format(name=vote, votes=poll.count_votes(vote_id)),
+        'integration': {
+            'url': url_for('vote', _external=True),
+            'context': {
+                'vote': vote_id,
+                'poll_id': poll.id
+            }
+        }
+    } for vote_id, vote in enumerate(options)]
     # add action to end the poll
     actions.append({
-                'name': "End Poll",
-                'integration': {
-                    'url': url_for('end_poll', _external=True),
-                    'context': {
-                        'poll_id': poll.id
-                    }
-                }
-            })
+        'name': "End Poll",
+        'integration': {
+            'url': url_for('end_poll', _external=True),
+            'context': {
+                'poll_id': poll.id
+            }
+        }
+    })
     return actions
 
 
 def resolve_usernames(user_ids):
+    """Resolve the list of user ids to list of user names."""
     if len(user_ids) == 0:
         return []
 
@@ -63,7 +67,7 @@ def resolve_usernames(user_ids):
         if r.ok:
             return [user["username"] for user in json.loads(r.text)]
     except Exception as e:
-        app.logger.error('Username query failed: ' + str(e))
+        app.logger.error('Username query failed: %s', str(e))
 
     return ['<Failed to resolve usernames>']
 
@@ -121,8 +125,7 @@ def get_poll(poll):
                     'short': False,
                     'value': "*Number of voters: {}*".format(poll.num_voters()),
                     'title': ""
-                }] +
-                [{
+                }] + [{
                     'short': True,
                     'title': vote,
                     'value': _format_vote_end_text(poll, vote_id)
@@ -346,7 +349,7 @@ def end_poll():
                 'props': get_poll(poll)
             }
         })
-    else:
-        return jsonify({
-            'ephemeral_text': "You are not allowed to end this poll"
-        })
+
+    return jsonify({
+        'ephemeral_text': "You are not allowed to end this poll"
+    })

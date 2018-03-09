@@ -223,6 +223,7 @@ class Poll:
         self.connection.commit()
 
     def is_finished(self):
+        """Return True if the poll is finished or False otherwise."""
         cur = self.connection.cursor()
         cur.execute("""SELECT finished FROM Polls WHERE poll_id=?""",
                     (self.id,))
