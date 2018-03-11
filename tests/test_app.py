@@ -11,7 +11,8 @@ class AppTest(unittest.TestCase):
         settings.DATABASE = ':memory:'
 
     def tearDown(self):
-        del settings.MATTERMOST_TOKEN
+        if hasattr(settings, 'MATTERMOST_TOKEN'):
+            del settings.MATTERMOST_TOKEN
         settings.MATTERMOST_TOKENS = None
 
     def test_parse_slash_command(self):
