@@ -10,8 +10,8 @@ WEBSERVER_ADDRESS = '0.0.0.0'
 # Port of the webserver
 WEBSERVER_PORT = 5000
 
-# Optional Mattermost token
-MATTERMOST_TOKEN = None
+# Optional list of Mattermost tokens (list of strings e.g. ['abc123', 'xyz321'])
+MATTERMOST_TOKENS = None
 
 # URL of the Mattermost server
 MATTERMOST_URL = 'http://localhost'

@@ -19,7 +19,12 @@ class InterfaceTest(unittest.TestCase):
         self.dbfile = tempfile.NamedTemporaryFile()
         settings.DATABASE = self.dbfile.name
 
-        settings.MATTERMOST_TOKEN = None
+        settings.MATTERMOST_TOKENS = None
+
+    def tearDown(self):
+        if hasattr(settings, 'MATTERMOST_TOKEN'):
+            del settings.MATTERMOST_TOKEN
+        settings.MATTERMOST_TOKENS = None
 
     def test_no_username(self):
         response = self.app.post('/', base_url=self.base_url)
@@ -305,3 +310,71 @@ class InterfaceTest(unittest.TestCase):
 
         rd = json.loads(response.data.decode('utf-8'))
         self.assertNotEqual(rd['response_type'], 'ephemeral')
+
+    def test_mattermost_tokens(self):
+        with self.subTest('No tokens'):
+            settings.MATTERMOST_TOKENS = None
+            data = {
+                'user_id': 'user0',
+                'text': 'Bla',
+                'token': 'abc123'
+            }
+            response = self.app.post('/', data=data, base_url=self.base_url)
+            self.assertEqual(200, response.status_code)
+
+            rd = json.loads(response.data.decode('utf-8'))
+            self.assertNotEqual(rd['response_type'], 'ephemeral')
+
+        with self.subTest('Valid token'):
+            settings.MATTERMOST_TOKENS = ['xyz321', 'abc123']
+            data = {
+                'user_id': 'user0',
+                'text': 'Bla',
+                'token': 'abc123'
+            }
+            response = self.app.post('/', data=data, base_url=self.base_url)
+            self.assertEqual(200, response.status_code)
+
+            rd = json.loads(response.data.decode('utf-8'))
+            self.assertNotEqual(rd['response_type'], 'ephemeral')
+
+            data = {
+                'user_id': 'user0',
+                'text': 'Bla',
+                'token': 'xyz321'
+            }
+            response = self.app.post('/', data=data, base_url=self.base_url)
+            self.assertEqual(200, response.status_code)
+
+            rd = json.loads(response.data.decode('utf-8'))
+            self.assertNotEqual(rd['response_type'], 'ephemeral')
+
+        with self.subTest('Invalid token'):
+            settings.MATTERMOST_TOKENS = ['xyz321', 'abc123']
+            data = {
+                'user_id': 'user0',
+                'text': 'Bla',
+                'token': 'abc321'
+            }
+            response = self.app.post('/', data=data, base_url=self.base_url)
+            self.assertEqual(200, response.status_code)
+
+            rd = json.loads(response.data.decode('utf-8'))
+            self.assertEqual(rd['response_type'], 'ephemeral')
+            self.assertIn('invalid token', rd['text'].lower())
+
+        with self.subTest('Legacy token'):
+            del settings.MATTERMOST_TOKENS
+            settings.MATTERMOST_TOKEN = 'abc123'
+            data = {
+                'user_id': 'user0',
+                'text': 'Bla',
+                'token': 'abc123'
+            }
+            response = self.app.post('/', data=data, base_url=self.base_url)
+            self.assertEqual(200, response.status_code)
+
+            rd = json.loads(response.data.decode('utf-8'))
+            self.assertNotEqual(rd['response_type'], 'ephemeral')
+
+            self.assertEqual(settings.MATTERMOST_TOKENS, ['abc123'])

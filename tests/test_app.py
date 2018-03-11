@@ -10,6 +10,10 @@ class AppTest(unittest.TestCase):
     def setUp(self):
         settings.DATABASE = ':memory:'
 
+    def tearDown(self):
+        del settings.MATTERMOST_TOKEN
+        settings.MATTERMOST_TOKENS = None
+
     def test_parse_slash_command(self):
         args = app.parse_slash_command('')
         self.assertEqual(args.message, '')

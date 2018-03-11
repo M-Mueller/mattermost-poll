@@ -235,9 +235,15 @@ def poll():
     }
     ```
     """
-    if settings.MATTERMOST_TOKEN:
+    if hasattr(settings, 'MATTERMOST_TOKEN'):
+        warnings.warn("MATTERMOST_TOKEN is deprecated, use MATTERMOST_TOKENS \
+                      instead", category=DeprecationWarning)
+        settings.MATTERMOST_TOKENS = [settings.MATTERMOST_TOKEN]
+        settings.MATTERMOST_TOKEN = None
+
+    if settings.MATTERMOST_TOKENS:
         token = request.form['token']
-        if token != settings.MATTERMOST_TOKEN:
+        if token not in settings.MATTERMOST_TOKENS:
             return jsonify({
                 'response_type': 'ephemeral',
                 'text': "The integration is not correctly set up: Invalid token."
