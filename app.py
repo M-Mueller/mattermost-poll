@@ -194,6 +194,12 @@ def parse_slash_command(command):
         return Arguments('', [], secret, public, max_votes)
 
 
+@app.route('/', methods=['GET'])
+def status():
+    """Returns a simple message if the server is running."""
+    return "Poll server is running"
+
+
 @app.route('/', methods=['POST'])
 def poll():
     """Creates a new poll.

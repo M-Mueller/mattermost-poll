@@ -26,9 +26,14 @@ class InterfaceTest(unittest.TestCase):
             del settings.MATTERMOST_TOKEN
         settings.MATTERMOST_TOKENS = None
 
+    def test_status(self):
+        response = self.app.get('/', base_url=self.base_url)
+        self.assertEqual(response.status_code, 200)
+
     def test_no_username(self):
         response = self.app.post('/', base_url=self.base_url)
         self.assertEqual(response.status_code, 400)
+        self.assertTrue(response.data.decode('utf-8'))
 
     def __validate_reponse(self, response_json, message, vote_options):
         """Validates the response against the json schema expected by
