@@ -1,3 +1,5 @@
 jsonschema
-nose
+pytest
+pytest-mock
+pytest-cov
 coverage

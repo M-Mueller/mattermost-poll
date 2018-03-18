@@ -7,6 +7,6 @@ install:
  - pip install codecov
 script:
  - cp settings.py.example settings.py
- - python3 -m "nose" --with-coverage --cover-package=app --cover-package=poll --cover-xml
+ - python3 -m pytest --cov-report xml --cov=app --cov=poll
 after_success:
  - codecov

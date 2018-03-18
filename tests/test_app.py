@@ -1,334 +1,296 @@
-# -*- coding: utf-8 -*-
-import unittest
-from unittest.mock import patch
+# pylint: disable=missing-docstring
+import pytest
 import app
-import settings
 from poll import Poll
 
 
-class AppTest(unittest.TestCase):
-    def setUp(self):
-        settings.DATABASE = ':memory:'
+@pytest.mark.parametrize(
+    'command, exp_message, exp_options, exp_secret, exp_public, exp_votes', [
+        ('Some message --Option 1 --Second Option',
+         'Some message', ['Option 1', 'Second Option'], False, False, 1),
+        ('Some message --Foo --Spam --secret',
+         'Some message', ['Foo', 'Spam'], True, False, 1),
+        ('Some message --Foo --Spam --Secret',
+         'Some message', ['Foo', 'Spam', 'Secret'], False, False, 1),
+        ('Some message --Foo --Spam --public',
+         'Some message', ['Foo', 'Spam'], False, True, 1),
+        ('Some message --Foo --Spam --Public',
+         'Some message', ['Foo', 'Spam', 'Public'], False, False, 1),
+        ('# heading\nSome *markup*<br>:tada: --More ~markup~ --:tada: --Spam-!',
+         '# heading\nSome *markup*<br>:tada:', ['More ~markup~', ':tada:',
+                                                'Spam-!'], False, False, 1),
+        ('No whitespace--Foo--Bar--Spam--secret--public',
+         'No whitespace', ['Foo', 'Bar', 'Spam'], True, True, 1),
+        ('   Trim  whitespace   --   Foo-- Spam  Spam  -- secret',
+         'Trim  whitespace', ['Foo', 'Spam  Spam'], True, False, 1),
+        ('Some message --Foo --Spam --secret --votes=3',
+         'Some message', ['Foo', 'Spam'], True, False, 3),
+        ('Some message --votes=-1 --Foo --Spam',
+         'Some message', ['Foo', 'Spam'], False, False, 1),
+        ('Some message --votes=0 --Foo --Spam',
+         'Some message', ['Foo', 'Spam'], False, False, 1)
+    ])
+def test_parse_slash_command(command, exp_message, exp_options,
+                             exp_secret, exp_public, exp_votes):
+    args = app.parse_slash_command('')
+    assert args.message == ''
+    assert args.vote_options == []
+    assert not args.secret
 
-    def tearDown(self):
-        if hasattr(settings, 'MATTERMOST_TOKEN'):
-            del settings.MATTERMOST_TOKEN
-        settings.MATTERMOST_TOKENS = None
+    args = app.parse_slash_command(command)
+    assert args.message == exp_message
+    assert args.vote_options == exp_options
+    assert args.secret == exp_secret
+    assert args.public == exp_public
+    assert args.max_votes == exp_votes
 
-    def test_parse_slash_command(self):
-        args = app.parse_slash_command('')
-        self.assertEqual(args.message, '')
-        self.assertEqual(args.vote_options, [])
-        self.assertEqual(args.secret, False)
 
-        commands = [
-            'Some message --Option 1 --Second Option',
-            'Some message --Foo --Spam --secret',
-            'Some message --Foo --Spam --Secret',
-            'Some message --Foo --Spam --public',
-            'Some message --Foo --Spam --Public',
-            '# heading\nSome **markup**<br>:tada: --More ~~markup~~ --:tada: --Spam-!',
-            'No whitespace--Foo--Bar--Spam--secret--public',
-            '   Trim  whitespace   --   Foo-- Spam  Spam  -- secret',
-            'Some message --Foo --Spam --secret --votes=3',
-            'Some message --votes=-1 --Foo --Spam',
-            'Some message --votes=0 --Foo --Spam',
-        ]
-        expected = [
-            ('Some message', ['Option 1', 'Second Option'], False, False, 1),
-            ('Some message', ['Foo', 'Spam'], True, False, 1),
-            ('Some message', ['Foo', 'Spam', 'Secret'], False, False, 1),
-            ('Some message', ['Foo', 'Spam'], False, True, 1),
-            ('Some message', ['Foo', 'Spam', 'Public'], False, False, 1),
-            ('# heading\nSome **markup**<br>:tada:',
-             ['More ~~markup~~', ':tada:', 'Spam-!'],
-             False, False, 1),
-            ('No whitespace', ['Foo', 'Bar', 'Spam'], True, True, 1),
-            ('Trim  whitespace', ['Foo', 'Spam  Spam'], True, False, 1),
-            ('Some message', ['Foo', 'Spam'], True, False, 3),
-            ('Some message', ['Foo', 'Spam'], False, False, 1),
-            ('Some message', ['Foo', 'Spam'], False, False, 1),
-        ]
+@pytest.mark.parametrize('votes, secret, exp_actions', [
+    ([], False, ['Yes (0)', 'No (0)']),
+    ([0, 0, 0, 1, 1], False, ['Yes (3)', 'No (2)']),
+    ([0, 0, 0, 1, 1], True, ['Yes', 'No'])
+])
+def test_get_actions(votes, secret, exp_actions):
+    poll = Poll.create(creator_id='user0', message='Message',
+                       vote_options=['Yes', 'No'], secret=secret)
 
-        for c, e in zip(commands, expected):
-            with self.subTest(command=c):
-                args = app.parse_slash_command(c)
-                self.assertEqual(args.message, e[0])
-                self.assertEqual(args.vote_options, e[1])
-                self.assertEqual(args.secret, e[2])
-                self.assertEqual(args.public, e[3])
-                self.assertEqual(args.max_votes, e[4])
+    for voter, vote in enumerate(votes):
+        poll.vote('user{}'.format(voter), vote)
 
-    def test_get_actions(self):
-        poll = Poll.create(creator_id='user0', message='Message',
-                           vote_options=['Yes', 'No'], secret=False)
+    with app.app.test_request_context(base_url='http://localhost:5005'):
+        actions = app.get_actions(poll)
+    assert len(actions) == 3
 
-        with self.subTest('Fresh poll'):
-            expected = [
-                ('Yes (0)', 0),
-                ('No (0)', 1),
-            ]
-            self.__test_get_actions(poll, expected)
+    for action, (vote_id, name) in zip(actions[:-1], enumerate(exp_actions)):
+        assert 'name' in action
+        assert 'integration' in action
 
-        with self.subTest('With votes'):
-            poll.vote('user0', 0)
-            poll.vote('user1', 0)
-            poll.vote('user2', 0)
-            poll.vote('user3', 1)
-            poll.vote('user4', 1)
-            expected = [
-                ('Yes (3)', 0),
-                ('No (2)', 1),
-            ]
-            self.__test_get_actions(poll, expected)
-
-        poll = Poll.create(creator_id='user0', message='Message',
-                           vote_options=['Yes', 'No'], secret=True)
-
-        with self.subTest('Secret vote'):
-            poll.vote('user0', 0)
-            poll.vote('user1', 0)
-            poll.vote('user2', 0)
-            poll.vote('user3', 1)
-            poll.vote('user4', 1)
-            expected = [
-                ('Yes', 0),
-                ('No', 1),
-            ]
-            self.__test_get_actions(poll, expected)
-
-    def __test_get_actions(self, poll, expected):
-        with app.app.test_request_context(base_url='http://localhost:5005'):
-            actions = app.get_actions(poll)
-        self.assertEqual(len(actions), 3)
-
-        for action, (name, vote) in zip(actions[:-1], expected):
-            self.assertIn('name', action)
-            self.assertIn('integration', action)
-
-            self.assertEqual(action['name'], name)
-            integration = action['integration']
-            self.assertIn('context', integration)
-            self.assertIn('url', integration)
-            self.assertEqual(integration['url'], 'http://localhost:5005/vote')
-
-            context = integration['context']
-            self.assertIn('vote', context)
-            self.assertIn('poll_id', context)
-            self.assertEqual(context['vote'], vote)
-            self.assertEqual(context['poll_id'], poll.id)
-
-        action = actions[-1]
-        self.assertIn('name', action)
-        self.assertIn('integration', action)
-
-        self.assertEqual(action['name'], 'End Poll')
+        assert action['name'] == name
         integration = action['integration']
-        self.assertIn('context', integration)
-        self.assertIn('url', integration)
-        self.assertEqual(integration['url'], 'http://localhost:5005/end')
+        assert 'context' in integration
+        assert 'url' in integration
+        assert integration['url'] == 'http://localhost:5005/vote'
 
         context = integration['context']
-        self.assertIn('poll_id', context)
-        self.assertEqual(context['poll_id'], poll.id)
+        assert 'vote' in context
+        assert 'poll_id' in context
+        assert context['vote'] == vote_id
+        assert context['poll_id'] == poll.id
 
-    def test_vote_to_string(self):
-        with self.subTest('Single vote'):
-            poll = Poll.create(creator_id='user0', message='Message',
-                               vote_options=['Sure', 'Maybe', 'No'])
-            poll.vote('user0', 0)
-            poll.vote('user1', 2)
+    # the last action is always 'End Poll'
+    action = actions[-1]
+    assert 'name' in action
+    assert 'integration' in action
 
-            self.assertEqual(app.vote_to_string(poll, 'user0'),
-                             'Sure ✓, Maybe ✗, No ✗')
-            self.assertEqual(app.vote_to_string(poll, 'user1'),
-                             'Sure ✗, Maybe ✗, No ✓')
-            self.assertEqual(app.vote_to_string(poll, 'user2'),
-                             'Sure ✗, Maybe ✗, No ✗')
+    assert action['name'] == 'End Poll'
+    integration = action['integration']
+    assert 'context' in integration
+    assert 'url' in integration
+    assert integration['url'] == 'http://localhost:5005/end'
 
-        with self.subTest('Two votes'):
-            poll = Poll.create(creator_id='user0', message='Message',
-                               vote_options=['Sure', 'Maybe', 'No'],
-                               max_votes=2)
-            poll.vote('user0', 0)
-            poll.vote('user0', 2)
-            poll.vote('user1', 2)
+    context = integration['context']
+    assert 'poll_id' in context
+    assert context['poll_id'] == poll.id
 
-            self.assertEqual(app.vote_to_string(poll, 'user0'),
-                             'Sure ✓, Maybe ✗, No ✓')
-            self.assertEqual(app.vote_to_string(poll, 'user1'),
-                             'Sure ✗, Maybe ✗, No ✓')
-            self.assertEqual(app.vote_to_string(poll, 'user2'),
-                             'Sure ✗, Maybe ✗, No ✗')
 
-    def resolve_usernames(user_ids):
-        return user_ids
+def test_vote_to_string_single():
+    poll = Poll.create(creator_id='user0', message='Message',
+                       vote_options=['Sure', 'Maybe', 'No'])
+    poll.vote('user0', 0)
+    poll.vote('user1', 2)
 
-    @patch('app.resolve_usernames', side_effect=resolve_usernames)
-    def test_get_poll(self, resolve_usernames):
-        with self.subTest('Running poll'):
-            poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
-                               vote_options=['Sure', 'Maybe', 'No'], secret=False)
-            poll.vote('user0', 0)
-            poll.vote('user1', 1)
-            poll.vote('user2', 2)
-            poll.vote('user3', 2)
+    assert app.vote_to_string(poll, 'user0') == ('Sure ✓, Maybe ✗, No ✗')
+    assert app.vote_to_string(poll, 'user1') == ('Sure ✗, Maybe ✗, No ✓')
+    assert app.vote_to_string(poll, 'user2') == ('Sure ✗, Maybe ✗, No ✗')
 
-            with app.app.test_request_context(base_url='http://localhost:5005'):
-                poll_dict = app.get_poll(poll)
 
-            self.assertIn('response_type', poll_dict)
-            self.assertIn('attachments', poll_dict)
+def test_vote_to_string_multi():
+    poll = Poll.create(creator_id='user0', message='Message',
+                       vote_options=['Sure', 'Maybe', 'No'],
+                       max_votes=2)
+    poll.vote('user0', 0)
+    poll.vote('user0', 2)
+    poll.vote('user1', 2)
 
-            self.assertEqual(poll_dict['response_type'], 'in_channel')
-            attachments = poll_dict['attachments']
-            self.assertEqual(len(attachments), 1)
-            self.assertIn('text', attachments[0])
-            self.assertIn('actions', attachments[0])
-            self.assertIn('fields', attachments[0])
-            self.assertEqual(attachments[0]['text'], poll.message)
-            self.assertEqual(len(attachments[0]['actions']), 4)
+    assert app.vote_to_string(poll, 'user0') == ('Sure ✓, Maybe ✗, No ✓')
+    assert app.vote_to_string(poll, 'user1') == ('Sure ✗, Maybe ✗, No ✓')
+    assert app.vote_to_string(poll, 'user2') == ('Sure ✗, Maybe ✗, No ✗')
 
-            fields = attachments[0]['fields']
-            self.assertEqual(len(fields), 1)
-            self.assertIn('short', fields[0])
-            self.assertIn('title', fields[0])
-            self.assertIn('value', fields[0])
-            self.assertEqual(False, fields[0]['short'])
-            self.assertEqual("", fields[0]['title'])
-            self.assertEqual('*Number of voters: 4*', fields[0]['value'])
 
-        with self.subTest('Running poll, multiple votes'):
-            poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
-                               vote_options=['Sure', 'Maybe', 'No'],
-                               secret=False, max_votes=2)
-            poll.vote('user0', 0)
-            poll.vote('user1', 1)
-            poll.vote('user2', 2)
-            poll.vote('user0', 2)
+def test_get_poll_running(mocker):
+    mocker.patch('app.resolve_usernames', new=lambda user_ids: user_ids)
 
-            with app.app.test_request_context(base_url='http://localhost:5005'):
-                poll_dict = app.get_poll(poll)
+    poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
+                       vote_options=['Sure', 'Maybe', 'No'], secret=False)
+    poll.vote('user0', 0)
+    poll.vote('user1', 1)
+    poll.vote('user2', 2)
+    poll.vote('user3', 2)
 
-            self.assertIn('response_type', poll_dict)
-            self.assertIn('attachments', poll_dict)
+    with app.app.test_request_context(base_url='http://localhost:5005'):
+        poll_dict = app.get_poll(poll)
 
-            self.assertEqual(poll_dict['response_type'], 'in_channel')
-            attachments = poll_dict['attachments']
-            self.assertEqual(len(attachments), 1)
-            self.assertIn('text', attachments[0])
-            self.assertIn('actions', attachments[0])
-            self.assertIn('fields', attachments[0])
-            self.assertEqual(attachments[0]['text'], poll.message)
-            self.assertEqual(len(attachments[0]['actions']), 4)
+    assert 'response_type' in poll_dict
+    assert 'attachments' in poll_dict
 
-            fields = attachments[0]['fields']
-            self.assertEqual(len(fields), 2)
-            self.assertIn('short', fields[0])
-            self.assertIn('title', fields[0])
-            self.assertIn('value', fields[0])
-            self.assertEqual(False, fields[0]['short'])
-            self.assertEqual("", fields[0]['title'])
-            self.assertEqual('*Number of voters: 3*', fields[0]['value'])
+    assert poll_dict['response_type'] == 'in_channel'
+    attachments = poll_dict['attachments']
+    assert len(attachments) == 1
+    assert 'text' in attachments[0]
+    assert 'actions' in attachments[0]
+    assert 'fields' in attachments[0]
+    assert attachments[0]['text'] == poll.message
+    assert len(attachments[0]['actions']) == 4
 
-            self.assertIn('short', fields[1])
-            self.assertIn('title', fields[1])
-            self.assertIn('value', fields[1])
-            self.assertEqual(False, fields[1]['short'])
-            self.assertEqual("", fields[1]['title'])
-            self.assertEqual('*You have 2 votes*', fields[1]['value'])
+    fields = attachments[0]['fields']
+    assert len(fields) == 1
+    assert 'short' in fields[0]
+    assert 'title' in fields[0]
+    assert 'value' in fields[0]
+    assert not fields[0]['short']
+    assert not fields[0]['title']
+    assert fields[0]['value'] == '*Number of voters: 4*'
 
-        with self.subTest('Finished poll'):
-            poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
-                               vote_options=['Sure', 'Maybe', 'No'], secret=False)
-            poll.vote('user0', 0)
-            poll.vote('user1', 1)
-            poll.vote('user2', 2)
-            poll.vote('user3', 2)
-            poll.end()
 
-            with app.app.test_request_context(base_url='http://localhost:5005'):
-                poll_dict = app.get_poll(poll)
+def test_get_poll_running_multi(mocker):
+    mocker.patch('app.resolve_usernames', new=lambda user_ids: user_ids)
 
-            self.assertIn('response_type', poll_dict)
-            self.assertIn('attachments', poll_dict)
+    poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
+                       vote_options=['Sure', 'Maybe', 'No'],
+                       secret=False, max_votes=2)
+    poll.vote('user0', 0)
+    poll.vote('user1', 1)
+    poll.vote('user2', 2)
+    poll.vote('user0', 2)
 
-            self.assertEqual(poll_dict['response_type'], 'in_channel')
-            attachments = poll_dict['attachments']
-            self.assertEqual(len(attachments), 1)
-            self.assertIn('text', attachments[0])
-            self.assertNotIn('actions', attachments[0])
-            self.assertIn('fields', attachments[0])
-            self.assertEqual(attachments[0]['text'], poll.message)
+    with app.app.test_request_context(base_url='http://localhost:5005'):
+        poll_dict = app.get_poll(poll)
 
-            fields = attachments[0]['fields']
-            self.assertEqual(len(fields), 4)
+    assert 'response_type' in poll_dict
+    assert 'attachments' in poll_dict
 
-            self.assertIn('short', fields[0])
-            self.assertIn('title', fields[0])
-            self.assertIn('value', fields[0])
-            self.assertEqual(False, fields[0]['short'])
-            self.assertEqual("", fields[0]['title'])
-            self.assertEqual('*Number of voters: 4*', fields[0]['value'])
+    assert poll_dict['response_type'] == 'in_channel'
+    attachments = poll_dict['attachments']
+    assert len(attachments) == 1
+    assert 'text' in attachments[0]
+    assert 'actions' in attachments[0]
+    assert 'fields' in attachments[0]
+    assert attachments[0]['text'] == poll.message
+    assert len(attachments[0]['actions']) == 4
 
-            expected = [
-                (poll.vote_options[0], '1 (25.0%)'),
-                (poll.vote_options[1], '1 (25.0%)'),
-                (poll.vote_options[2], '2 (50.0%)'),
-            ]
-            for field, (title, value) in zip(fields[1:], expected):
-                self.assertIn('short', field)
-                self.assertIn('title', field)
-                self.assertIn('value', field)
-                self.assertEqual(True, field['short'])
-                self.assertEqual(title, field['title'])
-                self.assertEqual(value, field['value'])
+    fields = attachments[0]['fields']
+    assert len(fields) == 2
+    assert 'short' in fields[0]
+    assert 'title' in fields[0]
+    assert 'value' in fields[0]
+    assert not fields[0]['short']
+    assert not fields[0]['title']
+    assert fields[0]['value'] == '*Number of voters: 3*'
 
-        with self.subTest('Finished public poll'):
-            poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
-                               vote_options=['Sure', 'Maybe', 'No'],
-                               public=True)
-            poll.vote('user0', 0)
-            poll.vote('user1', 1)
-            poll.vote('user2', 2)
-            poll.vote('user3', 2)
-            poll.end()
+    assert 'short' in fields[1]
+    assert 'title' in fields[1]
+    assert 'value' in fields[1]
+    assert not fields[1]['short']
+    assert not fields[1]['title']
+    assert fields[1]['value'] == '*You have 2 votes*'
 
-            with app.app.test_request_context(base_url='http://localhost:5005'):
-                poll_dict = app.get_poll(poll)
 
-            self.assertIn('response_type', poll_dict)
-            self.assertIn('attachments', poll_dict)
+def test_get_poll_finished(mocker):
+    mocker.patch('app.resolve_usernames', new=lambda user_ids: user_ids)
 
-            self.assertEqual(poll_dict['response_type'], 'in_channel')
-            attachments = poll_dict['attachments']
-            self.assertEqual(len(attachments), 1)
-            self.assertIn('text', attachments[0])
-            self.assertNotIn('actions', attachments[0])
-            self.assertIn('fields', attachments[0])
-            self.assertEqual(attachments[0]['text'], poll.message)
+    poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
+                       vote_options=['Sure', 'Maybe', 'No'], secret=False)
+    poll.vote('user0', 0)
+    poll.vote('user1', 1)
+    poll.vote('user2', 2)
+    poll.vote('user3', 2)
+    poll.end()
 
-            fields = attachments[0]['fields']
-            self.assertEqual(len(fields), 4)
+    with app.app.test_request_context(base_url='http://localhost:5005'):
+        poll_dict = app.get_poll(poll)
 
-            self.assertIn('short', fields[0])
-            self.assertIn('title', fields[0])
-            self.assertIn('value', fields[0])
-            self.assertEqual(False, fields[0]['short'])
-            self.assertEqual("", fields[0]['title'])
-            self.assertEqual('*Number of voters: 4*', fields[0]['value'])
+    assert 'response_type' in poll_dict
+    assert 'attachments' in poll_dict
 
-            expected = [
-                (poll.vote_options[0], '1 (25.0%)', ['user0']),
-                (poll.vote_options[1], '1 (25.0%)', ['user1']),
-                (poll.vote_options[2], '2 (50.0%)', ['user2', 'user3']),
-            ]
-            for field, (title, value, users) in zip(fields[1:], expected):
-                self.assertIn('short', field)
-                self.assertIn('title', field)
-                self.assertIn('value', field)
-                self.assertEqual(True, field['short'])
-                self.assertEqual(title, field['title'])
-                self.assertIn(value, field['value'])
-                for user in users:
-                    self.assertIn(user, field['value'])
+    assert poll_dict['response_type'] == 'in_channel'
+    attachments = poll_dict['attachments']
+    assert len(attachments) == 1
+    assert 'text' in attachments[0]
+    assert 'actions' not in attachments[0]
+    assert 'fields' in attachments[0]
+    assert attachments[0]['text'] == poll.message
+
+    fields = attachments[0]['fields']
+    assert len(fields) == 4
+
+    assert 'short' in fields[0]
+    assert 'title' in fields[0]
+    assert 'value' in fields[0]
+    assert not fields[0]['short']
+    assert not fields[0]['title']
+    assert fields[0]['value'] == '*Number of voters: 4*'
+
+    expected = [
+        (poll.vote_options[0], '1 (25.0%)'),
+        (poll.vote_options[1], '1 (25.0%)'),
+        (poll.vote_options[2], '2 (50.0%)'),
+    ]
+    for field, (title, value) in zip(fields[1:], expected):
+        assert 'short' in field
+        assert 'title' in field
+        assert 'value' in field
+        assert field['short']
+        assert title == field['title']
+        assert value == field['value']
+
+
+def test_get_poll_finished_public(mocker):
+    mocker.patch('app.resolve_usernames', new=lambda user_ids: user_ids)
+
+    poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
+                       vote_options=['Sure', 'Maybe', 'No'],
+                       public=True)
+    poll.vote('user0', 0)
+    poll.vote('user1', 1)
+    poll.vote('user2', 2)
+    poll.vote('user3', 2)
+    poll.end()
+
+    with app.app.test_request_context(base_url='http://localhost:5005'):
+        poll_dict = app.get_poll(poll)
+
+    assert 'response_type' in poll_dict
+    assert 'attachments' in poll_dict
+
+    assert poll_dict['response_type'] == 'in_channel'
+    attachments = poll_dict['attachments']
+    assert len(attachments) == 1
+    assert 'text' in attachments[0]
+    assert 'actions' not in attachments[0]
+    assert 'fields' in attachments[0]
+    assert attachments[0]['text'] == poll.message
+
+    fields = attachments[0]['fields']
+    assert len(fields) == 4
+
+    assert 'short' in fields[0]
+    assert 'title' in fields[0]
+    assert 'value' in fields[0]
+    assert not fields[0]['short']
+    assert not fields[0]['title']
+    assert fields[0]['value'] == '*Number of voters: 4*'
+
+    expected = [
+        (poll.vote_options[0], '1 (25.0%)', ['user0']),
+        (poll.vote_options[1], '1 (25.0%)', ['user1']),
+        (poll.vote_options[2], '2 (50.0%)', ['user2', 'user3']),
+    ]
+    for field, (title, value, users) in zip(fields[1:], expected):
+        assert 'short' in field
+        assert 'title' in field
+        assert 'value' in field
+        assert field['short']
+        assert title == field['title']
+        assert value in field['value']
+        for user in users:
+            assert user in field['value']
