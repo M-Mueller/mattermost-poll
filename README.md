@@ -54,7 +54,7 @@ and add the following to the ```services``` section:
       context: poll
       args:
         - mattermost_url="http://web"
-        - mattermost_tokens="['<mattermost-token-1>', '<mattermost-token-2>']"
+        - mattermost_tokens=['<mattermost-token-1>', '<mattermost-token-2>']
         - mattermost_pa_token="<personal-access-token>"
     ports:
       - "5000:5000"
