@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import warnings
 import json
+import logging
 import os.path
 from collections import namedtuple
 
@@ -194,6 +195,15 @@ def parse_slash_command(command):
         return Arguments('', [], secret, public, max_votes)
 
 
+@app.after_request
+def log_response(response):
+    """Logs the complete response for debugging."""
+    if app.logger.isEnabledFor(logging.DEBUG):
+        app.logger.debug('Response status: %s', response.status)
+        app.logger.debug('Response data: %s', response.get_data().decode('utf-8'))
+    return response
+
+
 @app.route('/', methods=['GET'])
 def status():
     """Returns a simple message if the server is running."""
@@ -260,6 +270,8 @@ def poll():
     if 'text' not in request.form:
         abort(400)
     user_id = request.form['user_id']
+
+    app.logger.debug('Received command: %s', request.form['text'])
 
     if request.form['text'].strip() == 'help':
         return jsonify({

@@ -20,3 +20,7 @@ MATTERMOST_URL = 'http://localhost'
 # Required to resolve username in 'public' polls.
 # https://docs.mattermost.com/developer/personal-access-tokens.html
 MATTERMOST_PA_TOKEN = None
+
+# Uncomment the following lines to enable file logging:
+#import logging
+#logging.basicConfig(filename='poll.log', level=logging.DEBUG)
