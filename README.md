@@ -18,6 +18,12 @@ Choices are separated by `--`.
 - `--public`: Show who voted for what at the end of the poll
 - `--votes=X`: Allows users to place a total of *X* votes. Default is 1. Each individual option can still only be voted once.
 
+## Help
+
+`/poll help` will display full usage options. Only visible to you.
+
+Set the "Autocomplete Hint" in the Slash Command settings to `See "/poll help" for full usage options`
+
 ## Requirements
 
 - Python 3
