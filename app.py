@@ -100,6 +100,13 @@ def get_poll(poll):
             'value': "*Number of voters: {}*".format(poll.num_voters()),
             'title': ""
         }]
+        if poll.public:
+            fields += [{
+                'short': False,
+                'value': ":warning: *This poll is public. When it closes the"
+                         " participants and their answers will be visible.*",
+                'title': ""
+            }]
         if poll.max_votes > 1:
             fields += [{
                 'short': False,

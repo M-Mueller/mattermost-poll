@@ -195,6 +195,49 @@ def test_get_poll_running_multi(mocker):
     assert fields[1]['value'] == '*You have 2 votes*'
 
 
+def test_get_poll_running_public(mocker):
+    mocker.patch('app.resolve_usernames', new=lambda user_ids: user_ids)
+
+    poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
+                       vote_options=['Sure', 'Maybe', 'No'],
+                       public=True)
+    poll.vote('user0', 0)
+    poll.vote('user1', 1)
+    poll.vote('user2', 2)
+    poll.vote('user0', 2)
+
+    with app.app.test_request_context(base_url='http://localhost:5005'):
+        poll_dict = app.get_poll(poll)
+
+    assert 'response_type' in poll_dict
+    assert 'attachments' in poll_dict
+
+    assert poll_dict['response_type'] == 'in_channel'
+    attachments = poll_dict['attachments']
+    assert len(attachments) == 1
+    assert 'text' in attachments[0]
+    assert 'actions' in attachments[0]
+    assert 'fields' in attachments[0]
+    assert attachments[0]['text'] == poll.message
+    assert len(attachments[0]['actions']) == 4
+
+    fields = attachments[0]['fields']
+    assert len(fields) == 2
+    assert 'short' in fields[0]
+    assert 'title' in fields[0]
+    assert 'value' in fields[0]
+    assert not fields[0]['short']
+    assert not fields[0]['title']
+    assert fields[0]['value'] == '*Number of voters: 3*'
+
+    assert 'short' in fields[1]
+    assert 'title' in fields[1]
+    assert 'value' in fields[1]
+    assert not fields[1]['short']
+    assert not fields[1]['title']
+    assert ":warning:" in fields[1]['value']
+
+
 def test_get_poll_finished(mocker):
     mocker.patch('app.resolve_usernames', new=lambda user_ids: user_ids)
 
