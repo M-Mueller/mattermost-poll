@@ -12,6 +12,7 @@ from poll import Poll, NoMoreVotesError, InvalidPollError
 import settings
 
 app = Flask(__name__)
+app.logger.propagate = True
 
 
 def get_help(command):
