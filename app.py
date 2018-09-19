@@ -79,8 +79,11 @@ def _format_vote_end_text(poll, vote_id):
     total_votes = poll.num_votes()
     if total_votes != 0:
         rel_vote_count = 100*vote_count/total_votes
+        rel_bar_size = 450*vote_count/total_votes
     else:
         rel_vote_count = 0.0
+        rel_bar_size = 0
+
     text = '{} ({:.1f}%)'.format(vote_count, rel_vote_count)
 
     if poll.public:
@@ -90,6 +93,22 @@ def _format_vote_end_text(poll, vote_id):
             text += '\n' + ', '.join(voters)
 
     return text
+
+def _format_vote_end_bar(poll):
+    text=""
+    total_votes = poll.num_votes()
+    for vote_id, vote in  enumerate(poll.vote_options):
+        vote_count = poll.count_votes(vote_id)
+        if total_votes != 0:
+              rel_bar_size = 450*vote_count/total_votes
+              rel_vote_count = 100*vote_count/total_votes
+        else:
+              rel_bar_size = 0
+              rel_vote_count = 0.0
+        text += '**{}**\n![Mattermost]({}{}.png ={}x25 "Mattermost Icon") ({:.1f}%)\n'.format(vote, settings.BASE_URL_GRAPHIC,  vote_id,  rel_bar_size, rel_vote_count)
+        
+    return text
+
 
 
 def get_poll(poll):
@@ -139,6 +158,12 @@ def get_poll(poll):
                     'title': vote,
                     'value': _format_vote_end_text(poll, vote_id)
                 } for vote, vote_id in votes]
+		 + [{
+                    'short': True,
+                    'title': "Graphic",
+                    'value': _format_vote_end_bar(poll)
+                }]
+
             }]
         }
 
@@ -376,6 +401,7 @@ def end_poll():
     if user_id == poll.creator_id:
         # only the creator may end a poll
         poll.end()
+        app.logger.info(get_poll(poll))
         return jsonify({
             'update': {
                 'props': get_poll(poll)
