@@ -78,11 +78,9 @@ def _format_vote_end_text(poll, vote_id):
     vote_count = poll.count_votes(vote_id)
     total_votes = poll.num_votes()
     if total_votes != 0:
-        rel_vote_count = 100*vote_count/total_votes
-        rel_bar_size = 450*vote_count/total_votes
+        rel_vote_count = 100*vote_count/total_votes       
     else:
         rel_vote_count = 0.0
-        rel_bar_size = 0
 
     text = '{} ({:.1f}%)'.format(vote_count, rel_vote_count)
 
