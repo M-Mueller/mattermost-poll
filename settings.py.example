@@ -21,6 +21,10 @@ MATTERMOST_URL = 'http://localhost'
 # https://docs.mattermost.com/developer/personal-access-tokens.html
 MATTERMOST_PA_TOKEN = None
 
+#BaseURL for Graphic-PNG-Files
+#URL with leading slash where 0.png - 10 png is hostet
+BASE_URL_GRAPHIC = 'http://localhost/images/'
+
 # Uncomment the following lines to enable file logging:
 #import logging
 #logging.basicConfig(filename='poll.log', level=logging.DEBUG)
