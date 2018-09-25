@@ -1,160 +1,16 @@
 # -*- coding: utf-8 -*-
 import warnings
-import json
 import logging
-import os.path
 from collections import namedtuple
 
-import requests
-from flask import Flask, request, jsonify, url_for, abort
+from flask import Flask, request, jsonify, abort
 
 from poll import Poll, NoMoreVotesError, InvalidPollError
+from formatters import format_help, format_poll, format_user_vote
 import settings
 
 app = Flask(__name__)
 app.logger.propagate = True
-
-
-def get_help(command):
-    """Returns a help string describing the poll slash command."""
-    help_file = os.path.join(os.path.dirname(__file__), 'help.md')
-    with open(help_file) as f:
-        return f.read().format(command=command)
-    return "Help file not found."""
-
-
-def get_actions(poll):
-    """Returns the JSON data of all available actions of the given poll.
-    Additional to the options of the poll, a 'End Poll' action
-    is appended.
-    """
-    options = poll.vote_options
-    name = "{name}"
-    if not poll.secret:
-        # display current number of votes
-        name += " ({votes})"
-    actions = [{
-        'name': name.format(name=vote, votes=poll.count_votes(vote_id)),
-        'integration': {
-            'url': url_for('vote', _external=True),
-            'context': {
-                'vote': vote_id,
-                'poll_id': poll.id
-            }
-        }
-    } for vote_id, vote in enumerate(options)]
-    # add action to end the poll
-    actions.append({
-        'name': "End Poll",
-        'integration': {
-            'url': url_for('end_poll', _external=True),
-            'context': {
-                'poll_id': poll.id
-            }
-        }
-    })
-    return actions
-
-
-def resolve_usernames(user_ids):
-    """Resolve the list of user ids to list of user names."""
-    if len(user_ids) == 0:
-        return []
-
-    try:
-        header = {'Authorization': 'Bearer ' + settings.MATTERMOST_PA_TOKEN}
-        url = settings.MATTERMOST_URL + '/api/v4/users/ids'
-
-        r = requests.post(url, headers=header, json=user_ids)
-        if r.ok:
-            return [user["username"] for user in json.loads(r.text)]
-    except Exception as e:
-        app.logger.error('Username query failed: %s', str(e))
-
-    return ['<Failed to resolve usernames>']
-
-
-def _format_vote_end_text(poll, vote_id):
-    vote_count = poll.count_votes(vote_id)
-    total_votes = poll.num_votes()
-    if total_votes != 0:
-        rel_vote_count = 100*vote_count/total_votes
-    else:
-        rel_vote_count = 0.0
-    text = '{} ({:.1f}%)'.format(vote_count, rel_vote_count)
-
-    if poll.public:
-        voters = resolve_usernames(poll.voters(vote_id))
-
-        if len(voters):
-            text += '\n' + ', '.join(voters)
-
-    return text
-
-
-def get_poll(poll):
-    """Returns the JSON representation of the given poll.
-    """
-    if not poll.is_finished():
-        fields = [{
-            'short': False,
-            'value': "*Number of voters: {}*".format(poll.num_voters()),
-            'title': ""
-        }]
-        if poll.public:
-            fields += [{
-                'short': False,
-                'value': ":warning: *This poll is public. When it closes the"
-                         " participants and their answers will be visible.*",
-                'title': ""
-            }]
-        if poll.max_votes > 1:
-            fields += [{
-                'short': False,
-                'value': "*You have {} votes*".format(poll.max_votes),
-                'title': ""
-            }]
-
-        return {
-            'response_type': 'in_channel',
-            'attachments': [{
-                'text': poll.message,
-                'actions': get_actions(poll),
-                'fields': fields
-            }]
-        }
-    else:
-        votes = [(vote, vote_id) for vote_id, vote in
-                 enumerate(poll.vote_options)]
-        return {
-            'response_type': 'in_channel',
-            'attachments': [{
-                'text': poll.message,
-                'fields': [{
-                    'short': False,
-                    'value': "*Number of voters: {}*".format(poll.num_voters()),
-                    'title': ""
-                }] + [{
-                    'short': True,
-                    'title': vote,
-                    'value': _format_vote_end_text(poll, vote_id)
-                } for vote, vote_id in votes]
-            }]
-        }
-
-
-def vote_to_string(poll, user_id):
-    """Returns the vote of the given user as a string.
-       Example: 'Pizza ✓, Burger ✗, Extra Cheese ✓'"""
-    string = ''
-    for vote_id, vote in enumerate(poll.vote_options):
-        string += vote
-        if vote_id in poll.votes(user_id):
-            string += ' ✓'
-        else:
-            string += ' ✗'
-        string += ', '
-    return string[:-2]  # remove trailing ,
 
 
 def parse_slash_command(command):
@@ -199,8 +55,7 @@ def parse_slash_command(command):
                                          'secret', 'public', 'max_votes'])
     if args:
         return Arguments(args[0], args[1:], secret, public, max_votes)
-    else:
-        return Arguments('', [], secret, public, max_votes)
+    return Arguments('', [], secret, public, max_votes)
 
 
 @app.after_request
@@ -284,7 +139,7 @@ def poll():
     if request.form['text'].strip() == 'help':
         return jsonify({
             'response_type': 'ephemeral',
-            'text': get_help(request.form['command'])
+            'text': format_help(request.form['command'])
         })
 
     args = parse_slash_command(request.form['text'])
@@ -311,13 +166,14 @@ def poll():
 
     app.logger.info('Creating Poll: %s', poll.id)
 
-    return jsonify(get_poll(poll))
+    return jsonify(format_poll(poll))
 
 
 @app.route('/vote', methods=['POST'])
 def vote():
     """Places a vote for a user.
-    Called through the URL in the corresponding action (see get_actions).
+    Called through the URL in the corresponding action (see
+    formatters.format_actions).
     The JSON `context` is expected to contain a valid poll_id and the
     vote_id to vote for.
     """
@@ -346,10 +202,10 @@ def vote():
 
     return jsonify({
         'update': {
-            'props': get_poll(poll)
+            'props': format_poll(poll)
         },
         'ephemeral_text': "Your vote has been updated:\n{}"
-                          .format(vote_to_string(poll, user_id))
+                          .format(format_user_vote(poll, user_id))
     })
 
 
@@ -378,7 +234,7 @@ def end_poll():
         poll.end()
         return jsonify({
             'update': {
-                'props': get_poll(poll)
+                'props': format_poll(poll)
             }
         })
 
