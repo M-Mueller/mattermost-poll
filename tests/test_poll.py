@@ -1,5 +1,7 @@
 # pylint: disable=missing-docstring
 import pytest
+import sqlite3
+import settings
 from poll import Poll, NoMoreVotesError, InvalidPollError
 
 
@@ -7,11 +9,14 @@ def test_init():
     creator_id = 'user01234'
     message = '## Markdown message<br>Test **bla**'
     vote_options = ['Option 1', 'Another option', 'Spam!']
-    poll = Poll.create(creator_id, message, vote_options, True)
+    poll = Poll.create(creator_id, message, vote_options, True, True, 2, True)
     assert poll.creator_id == creator_id
     assert poll.message == message
     assert poll.vote_options == vote_options
     assert poll.secret
+    assert poll.public
+    assert poll.max_votes == 2
+    assert poll.bars
 
 
 def test_init_defaults():
@@ -22,6 +27,30 @@ def test_init_defaults():
     assert poll.message == message
     assert poll.vote_options == ['Yes', 'No']
     assert not poll.secret
+    assert not poll.public
+    assert poll.max_votes == 1
+    assert not poll.bars
+
+
+def test_update_database():
+    con = sqlite3.connect(':memory:')
+    cur = con.cursor()
+
+    # restore database that is missing 'bars' column in Poll table
+    with open('tests/old_db.sql') as f:
+        cur.executescript(f.read())
+
+    cur.execute("""PRAGMA table_info(Polls)""")
+    assert 'bars' not in (c[1] for c in cur.fetchall())
+
+    poll = Poll(con, 1)
+    assert poll.creator_id == '9eu8hqt36tgg8q6w6ypu4ww1ch'
+    assert poll.message == 'Spam with...'
+    assert poll.vote_options == ['Eggs', 'Bacon', 'More Spam']
+    assert not poll.secret
+    assert poll.public
+    assert poll.max_votes == 2
+    assert not poll.bars
 
 
 def test_vote():
@@ -50,6 +79,16 @@ def test_vote():
     assert poll.count_votes(3) == 0
 
     poll.vote('user2', 1)
+    assert poll.num_votes() == 3
+    assert poll.count_votes(0) == 1
+    assert poll.count_votes(1) == 1
+    assert poll.count_votes(2) == 1
+    assert poll.count_votes(3) == 0
+
+    with pytest.raises(IndexError):
+        poll.vote('user2', 3)
+    with pytest.raises(IndexError):
+        poll.vote('user2', -2)
     assert poll.num_votes() == 3
     assert poll.count_votes(0) == 1
     assert poll.count_votes(1) == 1
@@ -161,7 +200,7 @@ def test_end():
 
 def test_load():
     poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'],
-                       secret=True, public=True, max_votes=2)
+                       secret=True, public=True, max_votes=2, bars=True)
 
     # because of :memory: database, load() cannot be used directly
     poll2 = Poll(poll.connection, poll.id)
@@ -171,6 +210,7 @@ def test_load():
     assert poll.public == poll2.public
     assert poll.max_votes == poll2.max_votes
     assert poll.vote_options == poll2.vote_options
+    assert poll.bars == poll2.bars
 
 
 def test_load_invalid():

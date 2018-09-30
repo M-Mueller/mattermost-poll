@@ -17,43 +17,6 @@ def format_help(command):
     return "Help file not found."""
 
 
-def resolve_usernames(user_ids):
-    """Resolve the list of user ids to list of user names."""
-    if len(user_ids) == 0:
-        return []
-
-    try:
-        header = {'Authorization': 'Bearer ' + settings.MATTERMOST_PA_TOKEN}
-        url = settings.MATTERMOST_URL + '/api/v4/users/ids'
-
-        r = requests.post(url, headers=header, json=user_ids)
-        if r.ok:
-            return [user["username"] for user in json.loads(r.text)]
-    except Exception as e:
-        app.app.logger.error('Username query failed: %s', str(e))
-
-    return ['<Failed to resolve usernames>']
-
-
-def _format_vote_end_text(poll, vote_id):
-    vote_count = poll.count_votes(vote_id)
-    total_votes = poll.num_votes()
-    if total_votes != 0:
-        rel_vote_count = 100*vote_count/total_votes
-    else:
-        rel_vote_count = 0.0
-
-    text = '{} ({:.1f}%)'.format(vote_count, rel_vote_count)
-
-    if poll.public:
-        voters = resolve_usernames(poll.voters(vote_id))
-
-        if len(voters):
-            text += '\n' + ', '.join(voters)
-
-    return text
-
-
 def format_poll(poll):
     """Returns the JSON representation of the given poll.
     """
@@ -95,6 +58,11 @@ def _format_running_poll(poll):
 def _format_finished_poll(poll):
     votes = [(vote, vote_id) for vote_id, vote in
              enumerate(poll.vote_options)]
+
+    if poll.bars:
+        # bars should be displayed from long to short
+        votes.sort(key=lambda v: poll.count_votes(v[1]), reverse=True)
+
     return {
         'response_type': 'in_channel',
         'attachments': [{
@@ -104,12 +72,58 @@ def _format_finished_poll(poll):
                 'value': "*Number of voters: {}*".format(poll.num_voters()),
                 'title': ""
             }] + [{
-                'short': True,
+                'short': not poll.bars,
                 'title': vote,
                 'value': _format_vote_end_text(poll, vote_id)
             } for vote, vote_id in votes]
         }]
     }
+
+
+def _format_vote_end_text(poll, vote_id):
+    vote_count = poll.count_votes(vote_id)
+    total_votes = poll.num_votes()
+    if total_votes != 0:
+        rel_vote_count = 100*vote_count/total_votes
+    else:
+        rel_vote_count = 0.0
+
+    text = ''
+
+    if poll.bars:
+        png_path = url_for('send_img', filename="bar.png", _external=True)
+        bar_min_width = 2  # even 0% should show a tiny bar
+        bar_width = 450*rel_vote_count/100 + bar_min_width
+        text += '![Bar]({} ={}x25) '.format(png_path, bar_width)
+
+    plural = 's' if vote_count != 1 else ''
+    text += '{} Vote{} ({:.1f}%)'.format(vote_count, plural, rel_vote_count)
+
+    if poll.public:
+        voters = resolve_usernames(poll.voters(vote_id))
+
+        if len(voters):
+            text += '\n' + ', '.join(voters)
+
+    return text
+
+
+def resolve_usernames(user_ids):
+    """Resolve the list of user ids to list of user names."""
+    if len(user_ids) == 0:
+        return []
+
+    try:
+        header = {'Authorization': 'Bearer ' + settings.MATTERMOST_PA_TOKEN}
+        url = settings.MATTERMOST_URL + '/api/v4/users/ids'
+
+        r = requests.post(url, headers=header, json=user_ids)
+        if r.ok:
+            return [user["username"] for user in json.loads(r.text)]
+    except Exception as e:
+        app.app.logger.error('Username query failed: %s', str(e))
+
+    return ['<Failed to resolve usernames>']
 
 
 def format_actions(poll):

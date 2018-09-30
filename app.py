@@ -3,7 +3,7 @@ import warnings
 import logging
 from collections import namedtuple
 
-from flask import Flask, request, jsonify, abort
+from flask import Flask, request, jsonify, abort, send_from_directory
 
 from poll import Poll, NoMoreVotesError, InvalidPollError
 from formatters import format_help, format_poll, format_user_vote
@@ -23,10 +23,12 @@ def parse_slash_command(command):
         - secret: boolean
         - public: boolean
         - num_votes: int
+        - bars: boolean
     """
     args = [arg.strip() for arg in command.split('--')]
     secret = False
     public = False
+    bars = False
     max_votes = 1
     try:
         i = [a for a in args].index('secret')
@@ -41,6 +43,12 @@ def parse_slash_command(command):
         public = True
     except:
         pass
+    try:
+        i = [a for a in args].index('bars')
+        args.pop(i)
+        bars = True
+    except:
+        pass
 
     try:
         votes = [a for a in enumerate(args) if 'votes' in a[1].lower()]
@@ -51,11 +59,13 @@ def parse_slash_command(command):
     except:
         pass
 
+    message = args[0] if args else ''
+    vote_options = args[1:] if args else []
+
     Arguments = namedtuple('Arguments', ['message', 'vote_options',
-                                         'secret', 'public', 'max_votes'])
-    if args:
-        return Arguments(args[0], args[1:], secret, public, max_votes)
-    return Arguments('', [], secret, public, max_votes)
+                                         'secret', 'public',
+                                         'max_votes', 'bars'])
+    return Arguments(message, vote_options, secret, public, max_votes, bars)
 
 
 @app.after_request
@@ -63,7 +73,9 @@ def log_response(response):
     """Logs the complete response for debugging."""
     if app.logger.isEnabledFor(logging.DEBUG):
         app.logger.debug('Response status: %s', response.status)
-        app.logger.debug('Response data: %s', response.get_data().decode('utf-8'))
+        if not response.direct_passthrough:  # excludes send_from_directory
+            app.logger.debug('Response data: %s',
+                             response.get_data().decode('utf-8'))
     return response
 
 
@@ -162,7 +174,8 @@ def poll():
                        vote_options=args.vote_options,
                        secret=args.secret,
                        public=args.public,
-                       max_votes=args.max_votes)
+                       max_votes=args.max_votes,
+                       bars=args.bars)
 
     app.logger.info('Creating Poll: %s', poll.id)
 
@@ -241,3 +254,8 @@ def end_poll():
     return jsonify({
         'ephemeral_text': "You are not allowed to end this poll"
     })
+
+
+@app.route('/img/<path:filename>')
+def send_img(filename):
+    return send_from_directory('img', filename)

@@ -209,10 +209,11 @@ def test_format_poll_finished(mocker):
     assert not fields[0]['title']
     assert fields[0]['value'] == '*Number of voters: 4*'
 
+    users = ['user0', 'user1', 'user2', 'user3']
     expected = [
-        (poll.vote_options[0], '1 (25.0%)'),
-        (poll.vote_options[1], '1 (25.0%)'),
-        (poll.vote_options[2], '2 (50.0%)'),
+        (poll.vote_options[0], '1 Vote (25.0%)'),
+        (poll.vote_options[1], '1 Vote (25.0%)'),
+        (poll.vote_options[2], '2 Votes (50.0%)'),
     ]
     for field, (title, value) in zip(fields[1:], expected):
         assert 'short' in field
@@ -221,6 +222,8 @@ def test_format_poll_finished(mocker):
         assert field['short']
         assert title == field['title']
         assert value == field['value']
+        for user in users:
+            assert user not in field['value']
 
 
 def test_format_poll_finished_public(mocker):
@@ -260,9 +263,9 @@ def test_format_poll_finished_public(mocker):
     assert fields[0]['value'] == '*Number of voters: 4*'
 
     expected = [
-        (poll.vote_options[0], '1 (25.0%)', ['user0']),
-        (poll.vote_options[1], '1 (25.0%)', ['user1']),
-        (poll.vote_options[2], '2 (50.0%)', ['user2', 'user3']),
+        (poll.vote_options[0], '1 Vote (25.0%)', ['user0']),
+        (poll.vote_options[1], '1 Vote (25.0%)', ['user1']),
+        (poll.vote_options[2], '2 Votes (50.0%)', ['user2', 'user3']),
     ]
     for field, (title, value, users) in zip(fields[1:], expected):
         assert 'short' in field
@@ -271,6 +274,117 @@ def test_format_poll_finished_public(mocker):
         assert field['short']
         assert title == field['title']
         assert value in field['value']
+        for user in users:
+            assert user in field['value']
+
+
+def test_format_poll_finished_bars(mocker):
+    mocker.patch('formatters.resolve_usernames', new=lambda user_ids: user_ids)
+
+    poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
+                       vote_options=['Sure', 'Maybe', 'No'],
+                       bars=True)
+    poll.vote('user0', 0)
+    poll.vote('user1', 1)
+    poll.vote('user2', 2)
+    poll.vote('user3', 2)
+    poll.end()
+
+    with app.app.test_request_context(base_url='http://localhost:5005'):
+        poll_dict = frmts.format_poll(poll)
+
+    assert 'response_type' in poll_dict
+    assert 'attachments' in poll_dict
+
+    assert poll_dict['response_type'] == 'in_channel'
+    attachments = poll_dict['attachments']
+    assert len(attachments) == 1
+    assert 'text' in attachments[0]
+    assert 'actions' not in attachments[0]
+    assert 'fields' in attachments[0]
+    assert attachments[0]['text'] == poll.message
+
+    fields = attachments[0]['fields']
+    assert len(fields) == 4
+
+    assert 'short' in fields[0]
+    assert 'title' in fields[0]
+    assert 'value' in fields[0]
+    assert not fields[0]['short']
+    assert not fields[0]['title']
+    assert fields[0]['value'] == '*Number of voters: 4*'
+
+    users = ['user0', 'user1', 'user2', 'user3']
+    img_url = 'http://localhost:5005/img/bar.png'
+    expected = [
+        (poll.vote_options[2], '2 Votes (50.0%)', 0.5),
+        (poll.vote_options[0], '1 Vote (25.0%)', 0.25),
+        (poll.vote_options[1], '1 Vote (25.0%)', 0.25),
+    ]
+    for field, (title, value, bar_length) in zip(fields[1:], expected):
+        assert 'short' in field
+        assert 'title' in field
+        assert 'value' in field
+        assert not field['short']
+        assert title == field['title']
+        assert value in field['value']
+        image = '![Bar]({} ={}x25)'.format(img_url, bar_length*450 + 2)
+        assert image in field['value']
+        for user in users:
+            assert user not in field['value']
+
+
+def test_format_poll_finished_public_bars(mocker):
+    mocker.patch('formatters.resolve_usernames', new=lambda user_ids: user_ids)
+
+    poll = Poll.create(creator_id='user0', message='# Spam? **:tada:**',
+                       vote_options=['Sure', 'Maybe', 'No'],
+                       bars=True, public=True)
+    poll.vote('user0', 0)
+    poll.vote('user1', 1)
+    poll.vote('user2', 2)
+    poll.vote('user3', 2)
+    poll.end()
+
+    with app.app.test_request_context(base_url='http://localhost:5005'):
+        poll_dict = frmts.format_poll(poll)
+
+    assert 'response_type' in poll_dict
+    assert 'attachments' in poll_dict
+
+    assert poll_dict['response_type'] == 'in_channel'
+    attachments = poll_dict['attachments']
+    assert len(attachments) == 1
+    assert 'text' in attachments[0]
+    assert 'actions' not in attachments[0]
+    assert 'fields' in attachments[0]
+    assert attachments[0]['text'] == poll.message
+
+    fields = attachments[0]['fields']
+    assert len(fields) == 4
+
+    assert 'short' in fields[0]
+    assert 'title' in fields[0]
+    assert 'value' in fields[0]
+    assert not fields[0]['short']
+    assert not fields[0]['title']
+    assert fields[0]['value'] == '*Number of voters: 4*'
+
+    img_url = 'http://localhost:5005/img/bar.png'
+    expected = [
+        (poll.vote_options[2], '2 Votes (50.0%)', 0.5, ['user2', 'user3']),
+        (poll.vote_options[0], '1 Vote (25.0%)', 0.25, ['user0']),
+        (poll.vote_options[1], '1 Vote (25.0%)', 0.25, ['user1']),
+    ]
+    for field, (title, value, bar_length, users) in zip(fields[1:], expected):
+        assert 'short' in field
+        assert 'title' in field
+        assert 'value' in field
+        assert not field['short']
+        assert title == field['title']
+        assert value in field['value']
+        image = '![Bar]({} ={}x25)'.format(img_url, bar_length*450 + 2)
+        assert image in field['value']
         for user in users:
             assert user in field['value']
 
