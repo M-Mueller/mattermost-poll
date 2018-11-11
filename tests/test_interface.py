@@ -90,7 +90,8 @@ def test_poll(base_url, client, data, status_code, message, vote_options):
 def test_poll_no_message(base_url, client):
     data = {
         'user_id': 'user0',
-        'text': ''
+        'text': '',
+        'command': '/poll',
     }
     response = client.post('/', data=data, base_url=base_url)
     assert response.status_code == 200
