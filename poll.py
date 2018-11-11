@@ -12,6 +12,42 @@ class InvalidPollError(Exception):
     pass
 
 
+def init_database(con):
+    """Initializes the database. Is automatically called the first time a Poll
+    is created."""
+    cur = con.cursor()
+    cur.execute("""PRAGMA user_version = 1""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS Polls (
+                   poll_id integer PRIMARY KEY,
+                   creator text NOT NULL,
+                   message text NOT NULL,
+                   finished integer NOT NULL,
+                   secret integer NOT NULL,
+                   public integer NOT NULL,
+                   max_votes integer NOT NULL,
+                   bars integer NOT NULL)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS VoteOptions (
+                   poll_id integer REFERENCES Polls (poll_id)
+                   ON DELETE CASCADE ON UPDATE NO ACTION,
+                   number integer NOT NULL,
+                   name text NOT NULL)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS Votes (
+                   poll_id integer REFERENCES Polls (poll_id)
+                   ON DELETE CASCADE ON UPDATE NO ACTION,
+                   voter text NOT NULL,
+                   vote integer NOT NULL,
+                   CONSTRAINT single_vote UNIQUE
+                   (poll_id, voter, vote) ON CONFLICT REPLACE)""")
+    con.commit()
+
+    cur.execute("""PRAGMA table_info(Polls)""")
+    if 'bars' not in (c[1] for c in cur.fetchall()):
+        print("Outdated database version detected, adding 'bars' column.")
+        cur.execute("""ALTER TABLE Polls
+                       ADD COLUMN bars integer NOT NULL DEFAULT 0""")
+        con.commit()
+
+
 class Poll:
     """The Poll class represents a single poll with a message and multiple
     options.
@@ -33,6 +69,8 @@ class Poll:
     public: boolean
         In a public vote, who voted for what is displayed at the end of the
         poll
+    bars: bollean
+        Show result as bar chart
     max_votes: int
         Number of votes each user has.
     """
@@ -40,6 +78,7 @@ class Poll:
         """Loads the poll with `id` from the database connection.
         Use `create` or `load` instead.
         """
+        init_database(connection)
         self.connection = connection
         self.connection.row_factory = sqlite3.Row
         self.id = id
@@ -56,7 +95,7 @@ class Poll:
                 raise InvalidPollError()
 
             cur.execute("""SELECT creator, message,
-                                  secret, public, max_votes FROM Polls
+                                  secret, public, max_votes, bars FROM Polls
                            WHERE poll_id=?""", (self.id,))
             row = cur.fetchone()
             if not row:
@@ -67,39 +106,20 @@ class Poll:
             self.secret = row['secret']
             self.public = row['public']
             self.max_votes = row['max_votes']
+            self.bars = row['bars']
 
         except sqlite3.Error as e:
             raise InvalidPollError() from e
 
     @classmethod
     def create(cls, creator_id, message, vote_options=[],
-               secret=False, public=False, max_votes=1):
+               secret=False, public=False, max_votes=1, bars=False):
         """Creates a new poll without any votes.
         Empty vote_options will be replaced by ['Yes', 'No'].
         """
         con = sqlite3.connect(settings.DATABASE)
+        init_database(con)
         cur = con.cursor()
-        cur.execute("""CREATE TABLE IF NOT EXISTS Polls (
-                       poll_id integer PRIMARY KEY,
-                       creator text NOT NULL,
-                       message text NOT NULL,
-                       finished integer NOT NULL,
-                       secret integer NOT NULL,
-                       public integer NOT NULL,
-                       max_votes integer NOT NULL)""")
-        cur.execute("""CREATE TABLE IF NOT EXISTS VoteOptions (
-                       poll_id integer REFERENCES Polls (poll_id)
-                       ON DELETE CASCADE ON UPDATE NO ACTION,
-                       number integer NOT NULL,
-                       name text NOT NULL)""")
-        cur.execute("""CREATE TABLE IF NOT EXISTS Votes (
-                       poll_id integer REFERENCES Polls (poll_id)
-                       ON DELETE CASCADE ON UPDATE NO ACTION,
-                       voter text NOT NULL,
-                       vote integer NOT NULL,
-                       CONSTRAINT single_vote UNIQUE
-                       (poll_id, voter, vote) ON CONFLICT REPLACE)""")
-        con.commit()
 
         if not vote_options:
             vote_options = ['Yes', 'No']
@@ -108,10 +128,10 @@ class Poll:
 
         cur.execute("""INSERT INTO Polls
                        (creator, message, finished,
-                        secret, public, max_votes) VALUES
-                       (?, ?, ?, ?, ?, ?)""",
+                        secret, public, max_votes, bars) VALUES
+                       (?, ?, ?, ?, ?, ?, ?)""",
                     (creator_id, message, False,
-                     secret, public, max_votes))
+                     secret, public, max_votes, bars))
         id = cur.lastrowid
         for number, name in enumerate(vote_options):
             cur.execute("""INSERT INTO VoteOptions
