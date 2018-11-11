@@ -158,7 +158,8 @@ def poll():
     if not args.message:
         return jsonify({
             'response_type': 'ephemeral',
-            'text': "Please provide a message"
+            'text': "**Please provide a message.**\n\n**Usage:**\n{}"
+                    .format(format_help(request.form['command']))
         })
     if args.public:
         if not settings.MATTERMOST_URL or not settings.MATTERMOST_PA_TOKEN:
