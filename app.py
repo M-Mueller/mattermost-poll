@@ -12,6 +12,14 @@ import settings
 app = Flask(__name__)
 app.logger.propagate = True
 
+try:  # pragma: no cover
+    if settings.APPLY_PROXY_FIX:
+        # respect X-Forwarded-Proto from proxy server (see #21)
+        from werkzeug.contrib.fixers import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app)
+except AttributeError:  # pragma: no cover
+    pass
+
 
 def parse_slash_command(command):
     """Parses a slash command for supported arguments.
