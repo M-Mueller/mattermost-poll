@@ -24,3 +24,6 @@ MATTERMOST_PA_TOKEN = None
 # Uncomment the following lines to enable file logging:
 #import logging
 #logging.basicConfig(filename='poll.log', level=logging.DEBUG)
+
+# Needs to be enabled if running behind a proxy server with HTTPS (see issue #21)
+APPLY_PROXY_FIX = False
