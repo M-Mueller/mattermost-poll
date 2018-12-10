@@ -12,6 +12,7 @@ Response = namedtuple('Response', ['ok', 'text'])
 
 @pytest.fixture
 def set_pa_token(request):
+    assert settings.TEST_SETTINGS
     settings.MATTERMOST_PA_TOKEN = '123abc456xyz'
 
     def clean():

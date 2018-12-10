@@ -300,11 +300,14 @@ def clean_token_setting(request):
             del settings.MATTERMOST_TOKEN
         settings.MATTERMOST_TOKENS = None
 
+    assert settings.TEST_SETTINGS
+
     request.addfinalizer(clean)
 
 
 @pytest.mark.usefixtures('clean_token_setting')
 def test_mattermost_tokens_none(base_url, client):
+    assert settings.TEST_SETTINGS
     settings.MATTERMOST_TOKENS = None
     data = {
         'user_id': 'user0',
@@ -320,6 +323,7 @@ def test_mattermost_tokens_none(base_url, client):
 
 @pytest.mark.usefixtures('clean_token_setting')
 def test_mattermost_tokens_valid(base_url, client):
+    assert settings.TEST_SETTINGS
     settings.MATTERMOST_TOKENS = ['xyz321', 'abc123']
     data = {
         'user_id': 'user0',
@@ -346,6 +350,7 @@ def test_mattermost_tokens_valid(base_url, client):
 
 @pytest.mark.usefixtures('clean_token_setting')
 def test_mattermost_tokens_invalid(base_url, client):
+    assert settings.TEST_SETTINGS
     settings.MATTERMOST_TOKENS = ['xyz321', 'abc123']
     data = {
         'user_id': 'user0',
