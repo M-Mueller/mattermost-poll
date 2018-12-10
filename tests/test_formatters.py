@@ -411,3 +411,15 @@ def test_vote_to_string_multi():
     assert frmts.format_user_vote(poll, 'user0') == ('Sure ✓, Maybe ✗, No ✓')
     assert frmts.format_user_vote(poll, 'user1') == ('Sure ✗, Maybe ✗, No ✓')
     assert frmts.format_user_vote(poll, 'user2') == ('Sure ✗, Maybe ✗, No ✗')
+
+
+@pytest.mark.parametrize('locale, start', [
+    ('en', 'Starts a poll'),
+    ('de', 'Startet eine Umfrage'),
+    ('zz', 'Starts a poll'),
+])
+def test_format_help(locale, start):
+    help_text = frmts.format_help('/schwifty', locale)
+    assert '/schwifty' in help_text
+    assert '{command}' not in help_text
+    assert help_text.startswith(start)

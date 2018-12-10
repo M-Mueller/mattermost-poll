@@ -47,8 +47,8 @@ python run.py
     - Optionally add the generated token to your `settings.py` (requires server restart).
 1. Edit your Mattermost `config.json` to include "localhost" in the "AllowedUntrustedInternalConnections" setting, e.g. `"AllowedUntrustedInternalConnections": "localhost"`
 
-To resolve usernames in `--public` polls, the server needs access to the
-Mattermost API. For this a [personal access token](https://docs.mattermost.com/developer/personal-access-tokens.html) must be provided in your `settings.py`. Which user provides the token doesn't matter, e.g. you can create a dummy account. If no token is provided `--public` polls will not be available.
+To resolve usernames in `--public` polls and to provide localization, the server needs access to the
+Mattermost API. For this a [personal access token](https://docs.mattermost.com/developer/personal-access-tokens.html) must be provided in your `settings.py`. Which user provides the token doesn't matter, e.g. you can create a dummy account. If no token is provided `--public` polls will not be available and all texts will be english.
 
 ## Docker
 

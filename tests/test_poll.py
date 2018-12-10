@@ -9,9 +9,11 @@ def test_init():
     creator_id = 'user01234'
     message = '## Markdown message<br>Test **bla**'
     vote_options = ['Option 1', 'Another option', 'Spam!']
-    poll = Poll.create(creator_id, message, vote_options, True, True, 2, True)
+    poll = Poll.create(creator_id, message, 'de', vote_options,
+                       True, True, 2, True)
     assert poll.creator_id == creator_id
     assert poll.message == message
+    assert poll.locale == 'de'
     assert poll.vote_options == vote_options
     assert poll.secret
     assert poll.public
@@ -25,6 +27,7 @@ def test_init_defaults():
     poll = Poll.create(creator_id, message)
     assert poll.creator_id == creator_id
     assert poll.message == message
+    assert poll.locale == 'en'
     assert poll.vote_options == ['Yes', 'No']
     assert not poll.secret
     assert not poll.public
@@ -42,10 +45,12 @@ def test_update_database():
 
     cur.execute("""PRAGMA table_info(Polls)""")
     assert 'bars' not in (c[1] for c in cur.fetchall())
+    assert 'locale' not in (c[1] for c in cur.fetchall())
 
     poll = Poll(con, 1)
     assert poll.creator_id == '9eu8hqt36tgg8q6w6ypu4ww1ch'
     assert poll.message == 'Spam with...'
+    assert poll.locale == "en"
     assert poll.vote_options == ['Eggs', 'Bacon', 'More Spam']
     assert not poll.secret
     assert poll.public
@@ -54,7 +59,7 @@ def test_update_database():
 
 
 def test_vote():
-    poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'])
+    poll = Poll.create('user0123', 'Spam?', 'en', ['Yes', 'Maybe', 'No'])
     assert poll.num_votes() == 0
     assert poll.count_votes(0) == 0
     assert poll.count_votes(1) == 0
@@ -97,7 +102,7 @@ def test_vote():
 
 
 def test_multiple_votes():
-    poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'],
+    poll = Poll.create('user0123', 'Spam?', 'en', ['Yes', 'Maybe', 'No'],
                        max_votes=2)
     assert poll.num_votes() == 0
     assert poll.count_votes(0) == 0
@@ -145,7 +150,7 @@ def test_multiple_votes():
     (2, ([0, 1], [2], []))
 ], ids=['Single vote', 'Multiple votes'])
 def test_votes(max_votes, expected_votes):
-    poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'],
+    poll = Poll.create('user0123', 'Spam?', 'en', ['Yes', 'Maybe', 'No'],
                        max_votes=max_votes)
     poll.vote('user0', 0)
     poll.vote('user1', 2)
@@ -164,7 +169,7 @@ def test_votes(max_votes, expected_votes):
     (1, (1, 2, 1, 1)),
 ], ids=['Single vote', 'Multiple votes'])
 def test_num_voters(max_votes, expected):
-    poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'],
+    poll = Poll.create('user0123', 'Spam?', 'en', ['Yes', 'Maybe', 'No'],
                        max_votes=max_votes)
     assert poll.num_voters() == 0
 
@@ -179,7 +184,7 @@ def test_num_voters(max_votes, expected):
 
 
 def test_end():
-    poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'],
+    poll = Poll.create('user0123', 'Spam?', 'en', ['Yes', 'Maybe', 'No'],
                        max_votes=2)
     poll.vote('user0', 0)
     poll.vote('user1', 2)
@@ -199,7 +204,7 @@ def test_end():
 
 
 def test_load():
-    poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'],
+    poll = Poll.create('user0123', 'Spam?', 'en', ['Yes', 'Maybe', 'No'],
                        secret=True, public=True, max_votes=2, bars=True)
 
     # because of :memory: database, load() cannot be used directly
@@ -218,6 +223,6 @@ def test_load_invalid():
         Poll.load('bla')
 
     with pytest.raises(InvalidPollError):
-        poll = Poll.create('user0123', 'Spam?', ['Yes', 'Maybe', 'No'],
+        poll = Poll.create('user0123', 'Spam?', 'en', ['Yes', 'Maybe', 'No'],
                            secret=True, public=True, max_votes=2)
         Poll(poll.connection, 'user3210')

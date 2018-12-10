@@ -4,13 +4,19 @@ import logging
 from collections import namedtuple
 
 from flask import Flask, request, jsonify, abort, send_from_directory
+from flask_babel import Babel, gettext as tr
+import flask_babel
 
 from poll import Poll, NoMoreVotesError, InvalidPollError
 from formatters import format_help, format_poll, format_user_vote
+from mattermost_api import user_locale
 import settings
+
 
 app = Flask(__name__)
 app.logger.propagate = True
+
+babel = Babel(app)
 
 try:  # pragma: no cover
     if settings.APPLY_PROXY_FIX:
@@ -76,6 +82,16 @@ def parse_slash_command(command):
     return Arguments(message, vote_options, secret, public, max_votes, bars)
 
 
+@babel.localeselector
+def get_locale():
+    """Returns the locale for the current request."""
+    try:
+        return user_locale(request.user_id)
+    except AttributeError as e:
+        app.logger.warning(e)
+    return "en"
+
+
 @app.after_request
 def log_response(response):
     """Logs the complete response for debugging."""
@@ -90,7 +106,7 @@ def log_response(response):
 @app.route('/', methods=['GET'])
 def status():
     """Returns a simple message if the server is running."""
-    return "Poll server is running"
+    return tr("Poll server is running")
 
 
 @app.route('/', methods=['POST'])
@@ -145,7 +161,8 @@ def poll():
         if token not in settings.MATTERMOST_TOKENS:
             return jsonify({
                 'response_type': 'ephemeral',
-                'text': "The integration is not correctly set up: Invalid token."
+                'text': tr("The integration is not correctly set up: "
+                           "Invalid token.")
             })
 
     if 'user_id' not in request.form:
@@ -153,33 +170,41 @@ def poll():
     if 'text' not in request.form:
         abort(400)
     user_id = request.form['user_id']
+    request.user_id = user_id
 
     app.logger.debug('Received command: %s', request.form['text'])
+
+    # the poll should have a fixed locale, otherwise it
+    # changes for everyone every time someone votes
+    locale = flask_babel.get_locale().language
 
     if request.form['text'].strip() == 'help':
         return jsonify({
             'response_type': 'ephemeral',
-            'text': format_help(request.form['command'])
+            'text': format_help(request.form['command'], locale)
         })
 
     args = parse_slash_command(request.form['text'])
     if not args.message:
+        text = tr("**Please provide a message.**\n\n"
+                  "**Usage:**\n{help}").format(
+                      help=format_help(request.form['command'], locale))
         return jsonify({
             'response_type': 'ephemeral',
-            'text': "**Please provide a message.**\n\n**Usage:**\n{}"
-                    .format(format_help(request.form['command']))
+            'text': text
         })
     if args.public:
         if not settings.MATTERMOST_URL or not settings.MATTERMOST_PA_TOKEN:
             return jsonify({
                 'response_type': 'ephemeral',
-                'text': "Public polls are not available with the "
-                        "current setup. Please check with you "
-                        "system administrator."
+                'text': tr("Public polls are not available with the "
+                           "current setup. Please check with you "
+                           "system administrator.")
             })
 
     poll = Poll.create(user_id,
                        message=args.message,
+                       locale=locale,
                        vote_options=args.vote_options,
                        secret=args.secret,
                        public=args.public,
@@ -203,13 +228,14 @@ def vote():
     user_id = json['user_id']
     poll_id = json['context']['poll_id']
     vote_id = json['context']['vote']
+    request.user_id = user_id
 
     try:
         poll = Poll.load(poll_id)
     except InvalidPollError:
         return jsonify({
-            'ephemeral_text': "This poll is not valid anymore.\n"
-                              "Sorry for the inconvenience."
+            'ephemeral_text': tr("This poll is not valid anymore.\n"
+                                 "Sorry for the inconvenience.")
         })
 
     app.logger.info('Voting in poll "%s" for user "%s": %i',
@@ -218,16 +244,16 @@ def vote():
         poll.vote(user_id, vote_id)
     except NoMoreVotesError:
         return jsonify({
-            'ephemeral_text': "You already used all your votes.\n"
-                              "Click on a vote to unselect it again."
+            'ephemeral_text': tr("You already used all your votes.\n"
+                                 "Click on a vote to unselect it again.")
         })
 
     return jsonify({
         'update': {
             'props': format_poll(poll)
         },
-        'ephemeral_text': "Your vote has been updated:\n{}"
-                          .format(format_user_vote(poll, user_id))
+        'ephemeral_text': tr("Your vote has been updated:\n{}").format(
+            format_user_vote(poll, user_id))
     })
 
 
@@ -241,13 +267,14 @@ def end_poll():
     json = request.get_json()
     user_id = json['user_id']
     poll_id = json['context']['poll_id']
+    request.user_id = user_id
 
     try:
         poll = Poll.load(poll_id)
     except InvalidPollError:
         return jsonify({
-            'ephemeral_text': "This poll is not valid anymore.\n"
-                              "Sorry for the inconvenience."
+            'ephemeral_text': tr("This poll is not valid anymore.\n"
+                                 "Sorry for the inconvenience.")
         })
 
     app.logger.info('Ending poll "%s"', poll_id)
@@ -261,7 +288,7 @@ def end_poll():
         })
 
     return jsonify({
-        'ephemeral_text': "You are not allowed to end this poll"
+        'ephemeral_text': tr("You are not allowed to end this poll")
     })
 
 
