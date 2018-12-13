@@ -31,6 +31,14 @@ def patched_user_locale(user_id):
         'user_id': 'de_user',
         'text': "Yes or No?"
     }, "Yes or No?", ['Ja', 'Nein', 'Umfrage beenden']),
+    ({
+        'user_id': 'de_user',
+        'text': "Wie geht's? --Gut --Schlecht --locale=en"
+    }, "Wie geht's?", ['Gut', 'Schlecht', 'End Poll']),
+    ({
+        'user_id': 'de_user',
+        'text': "Ja oder Nein? --locale=en"
+    }, "Ja oder Nein?", ['Yes', 'No', 'End Poll']),
 ])
 def test_localized_poll(mocker, client, data, message, actions):
     mocker.patch('app.user_locale', new=patched_user_locale)

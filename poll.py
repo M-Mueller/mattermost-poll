@@ -1,6 +1,6 @@
 import sqlite3
 
-from flask_babel import gettext as tr
+from flask_babel import force_locale, gettext as tr
 
 import settings
 
@@ -136,7 +136,8 @@ class Poll:
         cur = con.cursor()
 
         if not vote_options:
-            vote_options = [tr('Yes'), tr('No')]
+            with force_locale(locale):
+                vote_options = [tr('Yes'), tr('No')]
         # clamp to 1 to len(vote_options)
         max_votes = max(1, min(max_votes, len(vote_options)))
 

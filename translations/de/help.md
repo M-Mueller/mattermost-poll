@@ -19,6 +19,7 @@ Verhalten der Umfrage ändern:
 - `--public`: Zeigt am Ende der Umfrage an welcher Benutzer für was gestimmt hat.
 - `--votes=X`: Erlaubt Benutzern X Stimmen zu vergeben (Standardmäßig eine Stimme). Jede Auswahlmöglichkeiten kann trotzdem nur einmal gewählt werden.
 - `--bars`: Zeigt das Ergebnis der Umfrage als Balkendiagramm an.
+- `--locale=X`: Verwendet die angegebene Sprache für die Umfrage. Unterstützte Werte sind de und en. Standardmäßig wird die Sprache Ihres Kontos verwendet.
 
 Jede dieser Optionen muss klein geschrieben werden und alleine auftauchen, zum Beispiel: 
 ```

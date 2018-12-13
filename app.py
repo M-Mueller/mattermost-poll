@@ -38,48 +38,42 @@ def parse_slash_command(command):
         - public: boolean
         - num_votes: int
         - bars: boolean
+        - locale: str
     """
     args = [arg.strip() for arg in command.split('--')]
+    message = args[0]
+    vote_options = []
     secret = False
     public = False
     bars = False
+    locale = ''
     max_votes = 1
-    try:
-        i = [a for a in args].index('secret')
-        args.pop(i)
-        secret = True
-    except:
-        pass
-
-    try:
-        i = [a for a in args].index('public')
-        args.pop(i)
-        public = True
-    except:
-        pass
-    try:
-        i = [a for a in args].index('bars')
-        args.pop(i)
-        bars = True
-    except:
-        pass
-
-    try:
-        votes = [a for a in enumerate(args) if 'votes' in a[1].lower()]
-        if len(votes) > 0:
-            args.pop(votes[0][0])
-            max_votes = int(votes[0][1].split('=')[1])
-            max_votes = max(1, max_votes)
-    except:
-        pass
-
-    message = args[0] if args else ''
-    vote_options = args[1:] if args else []
+    for arg in args[1:]:
+        if arg == 'secret':
+            secret = True
+        elif arg == 'public':
+            public = True
+        elif arg == 'bars':
+            bars = True
+        elif arg.startswith('locale'):
+            try:
+                _, locale = arg.split('=')
+            except ValueError:
+                pass
+        elif arg.startswith('votes'):
+            try:
+                _, max_votes_str = arg.split('=')
+                max_votes = max(1, int(max_votes_str))
+            except ValueError:
+                pass
+        else:
+            vote_options.append(arg)
 
     Arguments = namedtuple('Arguments', ['message', 'vote_options',
-                                         'secret', 'public',
-                                         'max_votes', 'bars'])
-    return Arguments(message, vote_options, secret, public, max_votes, bars)
+                                         'secret', 'public', 'max_votes',
+                                         'bars', 'locale'])
+    return Arguments(message, vote_options, secret,
+                     public, max_votes, bars, locale)
 
 
 @babel.localeselector
@@ -201,6 +195,9 @@ def poll():
                            "current setup. Please check with you "
                            "system administrator.")
             })
+
+    if args.locale:
+        locale = args.locale
 
     poll = Poll.create(user_id,
                        message=args.message,

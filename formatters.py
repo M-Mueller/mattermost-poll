@@ -20,7 +20,7 @@ def format_help(command, locale='en'):
     except FileNotFoundError:
         if locale != 'en':
             return format_help(command, 'en')
-    return tr("Help file not found.")  # noqa
+    return tr("Help file not found.")  # pragma: no cover
 
 
 def format_poll(poll):
