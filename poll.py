@@ -1,4 +1,7 @@
 import sqlite3
+
+from flask_babel import force_locale, gettext as tr
+
 import settings
 
 
@@ -21,6 +24,7 @@ def init_database(con):
                    poll_id integer PRIMARY KEY,
                    creator text NOT NULL,
                    message text NOT NULL,
+                   locale text NOT NULL,
                    finished integer NOT NULL,
                    secret integer NOT NULL,
                    public integer NOT NULL,
@@ -47,6 +51,13 @@ def init_database(con):
                        ADD COLUMN bars integer NOT NULL DEFAULT 0""")
         con.commit()
 
+    cur.execute("""PRAGMA table_info(Polls)""")
+    if 'locale' not in (c[1] for c in cur.fetchall()):
+        print("Outdated database version detected, adding 'locale' column.")
+        cur.execute("""ALTER TABLE Polls
+                       ADD COLUMN locale text NOT NULL DEFAULT "en" """)
+        con.commit()
+
 
 class Poll:
     """The Poll class represents a single poll with a message and multiple
@@ -62,6 +73,8 @@ class Poll:
         User ID of the user that created the poll.
     message:
         The message of the poll (may contain markup).
+    locale:
+        The locale with which the poll was created.
     vote_options:
         A list of all available poll choices.
     secret: boolean
@@ -94,7 +107,7 @@ class Poll:
             if not self.vote_options:
                 raise InvalidPollError()
 
-            cur.execute("""SELECT creator, message,
+            cur.execute("""SELECT creator, message, locale,
                                   secret, public, max_votes, bars FROM Polls
                            WHERE poll_id=?""", (self.id,))
             row = cur.fetchone()
@@ -103,6 +116,7 @@ class Poll:
 
             self.creator_id = row['creator']
             self.message = row['message']
+            self.locale = row['locale']
             self.secret = row['secret']
             self.public = row['public']
             self.max_votes = row['max_votes']
@@ -112,7 +126,7 @@ class Poll:
             raise InvalidPollError() from e
 
     @classmethod
-    def create(cls, creator_id, message, vote_options=[],
+    def create(cls, creator_id, message, locale='en', vote_options=[],
                secret=False, public=False, max_votes=1, bars=False):
         """Creates a new poll without any votes.
         Empty vote_options will be replaced by ['Yes', 'No'].
@@ -122,15 +136,16 @@ class Poll:
         cur = con.cursor()
 
         if not vote_options:
-            vote_options = ['Yes', 'No']
+            with force_locale(locale):
+                vote_options = [tr('Yes'), tr('No')]
         # clamp to 1 to len(vote_options)
         max_votes = max(1, min(max_votes, len(vote_options)))
 
         cur.execute("""INSERT INTO Polls
-                       (creator, message, finished,
+                       (creator, message, locale, finished,
                         secret, public, max_votes, bars) VALUES
-                       (?, ?, ?, ?, ?, ?, ?)""",
-                    (creator_id, message, False,
+                       (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (creator_id, message, locale, False,
                      secret, public, max_votes, bars))
         id = cur.lastrowid
         for number, name in enumerate(vote_options):

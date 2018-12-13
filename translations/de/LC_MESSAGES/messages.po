@@ -1,0 +1,115 @@
+# German translations for PROJECT.
+# Copyright (C) 2018 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2018-12-10 22:19+0100\n"
+"PO-Revision-Date: 2018-12-06 21:29+0100\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: de\n"
+"Language-Team: de <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.6.0\n"
+
+#: app.py:109
+msgid "Poll server is running"
+msgstr "Umfrage Server läuft"
+
+#: app.py:164
+msgid "The integration is not correctly set up: Invalid token."
+msgstr "Die Integration ist nicht korrekt konfiguriert: Ungültiges Token"
+
+#: app.py:189
+msgid ""
+"**Please provide a message.**\n"
+"\n"
+"**Usage:**\n"
+"{help}"
+msgstr ""
+"**Bitte geben Sie eine Nachricht ein.**\n"
+"\n"
+"**Anleitung:**\n"
+"{help}"
+
+#: app.py:200
+msgid ""
+"Public polls are not available with the current setup. Please check with "
+"you system administrator."
+msgstr ""
+"Öffentliche Umfragen sind in der aktuellen Konfiguration nicht verfügbar."
+" Bitte wenden Sie sich an Ihren Administrator."
+
+#: app.py:237 app.py:276
+msgid ""
+"This poll is not valid anymore.\n"
+"Sorry for the inconvenience."
+msgstr ""
+"Diese Umfrage ist nicht mehr gültig.\n"
+"Bitte entschuldigen Sie die Unannehmlichkeiten."
+
+#: app.py:247
+msgid ""
+"You already used all your votes.\n"
+"Click on a vote to unselect it again."
+msgstr ""
+"Sie haben bereits alle Ihre Stimmen vergeben.\n"
+"Klicken Sie auf eine Stimme um sie zurückzunehmen."
+
+#: app.py:255
+msgid ""
+"Your vote has been updated:\n"
+"{}"
+msgstr ""
+"Ihre Wahl wurde aktualisiert:\n"
+"{}"
+
+#: app.py:291
+msgid "You are not allowed to end this poll"
+msgstr "Sie haben nicht die Berechtigung diese Umfrage zu beenden"
+
+#: formatters.py:23
+msgid "Help file not found."
+msgstr "Hilfe Datei nicht gefunden."
+
+#: formatters.py:38 formatters.py:79
+msgid "*Number of voters: {}*"
+msgstr "*Anzahl an Wählern: {}*"
+
+#: formatters.py:44
+msgid ""
+":warning: *This poll is public. When it closes the participants and their"
+" answers will be visible.*"
+msgstr ""
+":warning: *Diese Umfrage ist öffentlich. Wenn die Umfrage beendet wird, "
+"werden die Antworten aller Teilnehmer sichtbar sein.*"
+
+#: formatters.py:51
+msgid "*You have {} votes*"
+msgstr "*Sie haben {} Stimmen*"
+
+#: formatters.py:107
+#, python-format
+msgid "%(num)d Vote"
+msgid_plural "%(num)d Votes"
+msgstr[0] "%(num)d Stimme"
+msgstr[1] "%(num)d Stimmen"
+
+#: formatters.py:165
+msgid "End Poll"
+msgstr "Umfrage beenden"
+
+#: poll.py:139
+msgid "Yes"
+msgstr "Ja"
+
+#: poll.py:139
+msgid "No"
+msgstr "Nein"
+

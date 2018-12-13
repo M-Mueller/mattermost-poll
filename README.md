@@ -18,6 +18,7 @@ Choices are separated by `--`.
 - `--public`: Show who voted for what at the end of the poll
 - `--votes=X`: Allows users to place a total of *X* votes. Default is 1. Each individual option can still only be voted once.
 - `--bars`: Show results as a bar chart at the end of the poll.
+- `--locale=X`: Use a specific locale for the poll. Supported values are en and de. By default it's the users language.
 
 ## Help
 
@@ -47,8 +48,8 @@ python run.py
     - Optionally add the generated token to your `settings.py` (requires server restart).
 1. Edit your Mattermost `config.json` to include "localhost" in the "AllowedUntrustedInternalConnections" setting, e.g. `"AllowedUntrustedInternalConnections": "localhost"`
 
-To resolve usernames in `--public` polls, the server needs access to the
-Mattermost API. For this a [personal access token](https://docs.mattermost.com/developer/personal-access-tokens.html) must be provided in your `settings.py`. Which user provides the token doesn't matter, e.g. you can create a dummy account. If no token is provided `--public` polls will not be available.
+To resolve usernames in `--public` polls and to provide localization, the server needs access to the
+Mattermost API. For this a [personal access token](https://docs.mattermost.com/developer/personal-access-tokens.html) must be provided in your `settings.py`. Which user provides the token doesn't matter, e.g. you can create a dummy account. If no token is provided `--public` polls will not be available and all texts will be english.
 
 ## Docker
 

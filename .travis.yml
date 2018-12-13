@@ -6,7 +6,6 @@ install:
  - pip install -r tests/requirements.txt
  - pip install codecov
 script:
- - cp settings.py.example settings.py
- - python3 -m pytest --cov-report xml --cov=app --cov=poll --cov=formatters
+ - python3 -m pytest --cov-report xml --cov=app --cov=poll --cov=formatters --cov=mattermost_api
 after_success:
  - codecov
