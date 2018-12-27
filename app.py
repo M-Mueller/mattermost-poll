@@ -26,6 +26,14 @@ try:  # pragma: no cover
 except AttributeError:  # pragma: no cover
     pass
 
+# Add missing settings
+if not hasattr(settings, 'PUBLIC_BY_DEFAULT'):
+    settings.PUBLIC_BY_DEFAULT = False
+if not hasattr(settings, 'PROGRESS_BY_DEFAULT'):
+    settings.PROGRESS_BY_DEFAULT = True
+if not hasattr(settings, 'BARS_BY_DEFAULT'):
+    settings.BARS_BY_DEFAULT = True
+
 
 def parse_slash_command(command):
     """Parses a slash command for supported arguments.
@@ -34,27 +42,37 @@ def parse_slash_command(command):
     Supported arguments:
         - message: str
         - vote_options: list of str
-        - secret: boolean
+        - secret: boolean (deprecated)
+        - progress: boolean
+        - noprogress: boolean
         - public: boolean
+        - anonym: boolean
         - num_votes: int
         - bars: boolean
+        - nobars: boolean
         - locale: str
     """
     args = [arg.strip() for arg in command.split('--')]
     message = args[0]
     vote_options = []
-    secret = False
-    public = False
-    bars = False
+    progress = settings.PROGRESS_BY_DEFAULT
+    public = settings.PUBLIC_BY_DEFAULT
+    bars = settings.BARS_BY_DEFAULT
     locale = ''
     max_votes = 1
     for arg in args[1:]:
-        if arg == 'secret':
-            secret = True
+        if arg == 'secret' or arg == 'noprogress':
+            progress = False
+        elif arg == 'progress':
+            progress = True
         elif arg == 'public':
             public = True
+        elif arg == 'anonym':
+            public = False
         elif arg == 'bars':
             bars = True
+        elif arg == 'nobars':
+            bars = False
         elif arg.startswith('locale'):
             try:
                 _, locale = arg.split('=')
@@ -70,9 +88,9 @@ def parse_slash_command(command):
             vote_options.append(arg)
 
     Arguments = namedtuple('Arguments', ['message', 'vote_options',
-                                         'secret', 'public', 'max_votes',
+                                         'progress', 'public', 'max_votes',
                                          'bars', 'locale'])
-    return Arguments(message, vote_options, secret,
+    return Arguments(message, vote_options, progress,
                      public, max_votes, bars, locale)
 
 
@@ -203,7 +221,7 @@ def poll():
                        message=args.message,
                        locale=locale,
                        vote_options=args.vote_options,
-                       secret=args.secret,
+                       secret=not args.progress,
                        public=args.public,
                        max_votes=args.max_votes,
                        bars=args.bars)

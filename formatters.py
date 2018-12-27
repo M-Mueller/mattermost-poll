@@ -4,23 +4,60 @@ import os.path
 from flask import url_for
 from flask_babel import force_locale, gettext as tr, ngettext
 
+import settings
 from mattermost_api import resolve_usernames
+
+
+def _is_superfluous(line):
+    """
+    Check if a description of an option is superfluous
+    because the option is set by default.
+    """
+    options_for_setting = {
+        "PUBLIC_BY_DEFAULT": ["anonym", "public"],
+        "PROGRESS_BY_DEFAULT": ["noprogress", "progress"],
+        "BARS_BY_DEFAULT": ["nobars", "bars"],
+    }
+    for setting, args in options_for_setting.items():
+        index = int(getattr(settings, setting))
+        superfluous_option = "- `--{}`".format(args[index])
+        if line.startswith(superfluous_option):
+            return True
+    return False
 
 
 def format_help(command, locale='en'):
     """Returns a help string describing the poll slash command."""
+    help_lines = []
+
     help_file = os.path.join(
         os.path.dirname(__file__),
         'translations',
         locale,
-        'help.md')
+        'help.md'
+    )
     try:
         with open(help_file) as f:
-            return f.read().format(command=command)
+            help_lines = f.readlines()
     except FileNotFoundError:
         if locale != 'en':
             return format_help(command, 'en')
-    return tr("Help file not found.")  # pragma: no cover
+
+    if not help_lines:
+        return tr("Help file not found.")  # pragma: no cover
+
+    # remove the description of all superfluous options
+    help_text = ''.join([
+        line
+        for line
+        in help_lines
+        if not _is_superfluous(line)
+    ])
+
+    # replace placeholder for slash command
+    help_text = help_text.format(command=command)
+
+    return help_text
 
 
 def format_poll(poll):
