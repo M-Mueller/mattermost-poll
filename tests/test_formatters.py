@@ -3,6 +3,7 @@ import pytest
 import formatters as frmts
 import app
 from poll import Poll
+from test_utils import force_settings
 
 
 @pytest.mark.parametrize('votes, secret, exp_actions', [
@@ -423,3 +424,31 @@ def test_format_help(locale, start):
     assert '/schwifty' in help_text
     assert '{command}' not in help_text
     assert help_text.startswith(start)
+
+
+def test_format_help_remove_superfluous():
+    with force_settings(
+        PUBLIC_BY_DEFAULT=True,
+        PROGRESS_BY_DEFAULT=True,
+        BARS_BY_DEFAULT=True
+    ):
+        hlp = frmts.format_help('/poll')
+        assert '`--public`' not in hlp
+        assert '`--anonym`' in hlp
+        assert '`--progress`' not in hlp
+        assert '`--noprogress`' in hlp
+        assert '`--bars`' not in hlp
+        assert '`--nobars`' in hlp
+
+    with force_settings(
+        PUBLIC_BY_DEFAULT=False,
+        PROGRESS_BY_DEFAULT=False,
+        BARS_BY_DEFAULT=False
+    ):
+        hlp = frmts.format_help('/poll')
+        assert '`--public`' in hlp
+        assert '`--anonym`' not in hlp
+        assert '`--progress`' in hlp
+        assert '`--noprogress`' not in hlp
+        assert '`--bars`' in hlp
+        assert '`--nobars`' not in hlp

@@ -14,7 +14,7 @@ Choices are separated by `--`.
 
 ## Additional options
 
-- `--secret`: Do not display the number of votes until the poll is ended
+- `--noprogress`: Do not display the number of votes until the poll is ended
 - `--public`: Show who voted for what at the end of the poll
 - `--votes=X`: Allows users to place a total of *X* votes. Default is 1. Each individual option can still only be voted once.
 - `--bars`: Show results as a bar chart at the end of the poll.

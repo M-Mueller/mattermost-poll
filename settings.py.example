@@ -21,6 +21,12 @@ MATTERMOST_URL = 'http://localhost'
 # https://docs.mattermost.com/developer/personal-access-tokens.html
 MATTERMOST_PA_TOKEN = None
 
+# Set default options for all created polls. The user will always have an
+# option to disable any default options (e.g. through '--noprogress').
+PUBLIC_BY_DEFAULT = False
+PROGRESS_BY_DEFAULT = True
+BARS_BY_DEFAULT = True
+
 # Uncomment the following lines to enable file logging:
 #import logging
 #logging.basicConfig(filename='poll.log', level=logging.DEBUG)

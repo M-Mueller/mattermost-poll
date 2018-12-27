@@ -21,4 +21,3 @@ MATTERMOST_URL = 'http://www.example.com'
 # Required to resolve username in 'public' polls.
 # https://docs.mattermost.com/developer/personal-access-tokens.html
 MATTERMOST_PA_TOKEN = None
-
