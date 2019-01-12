@@ -88,6 +88,19 @@ def _format_running_poll(poll):
             'value': tr("*You have {} votes*").format(poll.max_votes),
             'title': ""
         }]
+    if poll.bars:
+        votes = [
+            (vote, vote_id)
+            for vote_id, vote
+            in enumerate(poll.vote_options)
+            if poll.count_votes(vote_id) > 0
+        ]
+
+        fields += [{
+            'short': False,
+            'title': vote,
+            'value': _format_vote_end_text(poll, vote_id)
+        } for vote, vote_id in votes]
 
     return {
         'response_type': 'in_channel',
@@ -100,12 +113,11 @@ def _format_running_poll(poll):
 
 
 def _format_finished_poll(poll):
-    votes = [(vote, vote_id) for vote_id, vote in
-             enumerate(poll.vote_options)]
-
-    if poll.bars:
-        # bars should be displayed from long to short
-        votes.sort(key=lambda v: poll.count_votes(v[1]), reverse=True)
+    votes = [
+        (vote, vote_id)
+        for vote_id, vote
+        in enumerate(poll.vote_options)
+    ]
 
     return {
         'response_type': 'in_channel',
