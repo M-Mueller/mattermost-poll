@@ -260,6 +260,54 @@ def test_format_poll_running_public_bars(mocker):
             assert user in field['value']
 
 
+def test_format_poll_running_secret(mocker):
+    mocker.patch('formatters.resolve_usernames', new=lambda user_ids: user_ids)
+
+    poll = Poll.create(
+        creator_id='user0',
+        message='# Spam? **:tada:**',
+        vote_options=['Sure', 'Maybe', 'No'],
+        public=True,
+        bars=True,
+        secret=True,
+    )
+    poll.vote('user0', 2)
+    poll.vote('user1', 1)
+    poll.vote('user2', 2)
+    poll.vote('user3', 2)
+
+    with app.app.test_request_context(base_url='http://localhost:5005'):
+        poll_dict = frmts.format_poll(poll)
+
+    assert 'response_type' in poll_dict
+    assert 'attachments' in poll_dict
+
+    assert poll_dict['response_type'] == 'in_channel'
+    attachments = poll_dict['attachments']
+    assert len(attachments) == 1
+    assert 'text' in attachments[0]
+    assert 'actions' in attachments[0]
+    assert 'fields' in attachments[0]
+    assert attachments[0]['text'] == poll.message
+    assert len(attachments[0]['actions']) == 4
+
+    fields = attachments[0]['fields']
+    assert len(fields) == 2
+    assert 'short' in fields[0]
+    assert 'title' in fields[0]
+    assert 'value' in fields[0]
+    assert not fields[0]['short']
+    assert not fields[0]['title']
+    assert fields[0]['value'] == '*Number of voters: 4*'
+
+    assert 'short' in fields[1]
+    assert 'title' in fields[1]
+    assert 'value' in fields[1]
+    assert not fields[1]['short']
+    assert not fields[1]['title']
+    assert ":warning:" in fields[1]['value']
+
+
 def test_format_poll_finished(mocker):
     mocker.patch('formatters.resolve_usernames', new=lambda user_ids: user_ids)
 

@@ -88,7 +88,7 @@ def _format_running_poll(poll):
             'value': tr("*You have {} votes*").format(poll.max_votes),
             'title': ""
         }]
-    if poll.bars:
+    if not poll.secret and poll.bars:
         votes = [
             (vote, vote_id)
             for vote_id, vote
