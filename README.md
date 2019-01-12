@@ -28,7 +28,7 @@ Set the "Autocomplete Hint" in the Slash Command settings to `See "/poll help" f
 
 ## Requirements
 
-- Python 3
+- Python >= 3.6
 - Flask
 - Tornado
 - Requests
