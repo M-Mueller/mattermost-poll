@@ -33,6 +33,8 @@ if not hasattr(settings, 'PROGRESS_BY_DEFAULT'):
     settings.PROGRESS_BY_DEFAULT = True
 if not hasattr(settings, 'BARS_BY_DEFAULT'):
     settings.BARS_BY_DEFAULT = True
+if not hasattr(settings, 'BAR_IMG_URL'):
+    settings.BAR_IMG_URL = None
 
 
 def parse_slash_command(command):

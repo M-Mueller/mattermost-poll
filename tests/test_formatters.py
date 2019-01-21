@@ -539,6 +539,37 @@ def test_format_poll_finished_public_bars(mocker):
             assert user in field['value']
 
 
+def test_format_poll_bars_absolute_url(mocker):
+    mocker.patch('formatters.resolve_usernames', new=lambda user_ids: user_ids)
+
+    img_url = 'http://example.org/images/red_bar.png'
+    with force_settings(BAR_IMG_URL=img_url):
+        poll = Poll.create(
+            creator_id='user0',
+            message='# Spam? **:tada:**',
+            vote_options=['Sure', 'Maybe', 'No'],
+            bars=True,
+        )
+        poll.vote('user0', 0)
+        poll.vote('user1', 1)
+        poll.vote('user2', 2)
+        poll.vote('user3', 2)
+        poll.end()
+
+        with app.app.test_request_context(base_url='http://localhost:5005'):
+            poll_dict = frmts.format_poll(poll)
+
+        assert 'response_type' in poll_dict
+        assert 'attachments' in poll_dict
+
+        attachments = poll_dict['attachments']
+        fields = attachments[0]['fields']
+
+        for field in fields[1:]:
+            assert img_url in field['value']
+            assert 'localhost' not in field['value']
+
+
 def test_vote_to_string_single():
     poll = Poll.create(
         creator_id='user0',
