@@ -35,6 +35,10 @@ if not hasattr(settings, 'BARS_BY_DEFAULT'):
     settings.BARS_BY_DEFAULT = True
 if not hasattr(settings, 'BAR_IMG_URL'):
     settings.BAR_IMG_URL = None
+if not hasattr(settings, 'DEFAULT_QUESTION'):
+    settings.DEFAULT_QUESTION = None
+if not hasattr(settings, 'DEFAULT_VOTES'):
+    settings.DEFAULT_VOTES = []
 
 
 def parse_slash_command(command):
@@ -55,8 +59,12 @@ def parse_slash_command(command):
         - locale: str
     """
     args = [arg.strip() for arg in command.split('--')]
-    message = args[0]
-    vote_options = []
+    if not args[0]:
+        message = settings.DEFAULT_QUESTION
+        vote_options = settings.DEFAULT_VOTES
+    else:
+        message = args[0]
+        vote_options = []
     progress = settings.PROGRESS_BY_DEFAULT
     public = settings.PUBLIC_BY_DEFAULT
     bars = settings.BARS_BY_DEFAULT
