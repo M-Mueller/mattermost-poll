@@ -31,6 +31,12 @@ PUBLIC_BY_DEFAULT = False
 PROGRESS_BY_DEFAULT = True
 BARS_BY_DEFAULT = True
 
+# Set default question and vote possibilities, if the user does not provide
+# any of those (i.e., if the user just writes the slash command).
+# If these options are not set, the default behavior is to show the help message.
+# DEFAULT_QUESTION = "What is your favorite color?"
+# DEFAULT_VOTES = ["Green", "Blue", "Red"]
+
 # Uncomment the following lines to enable file logging:
 #import logging
 #logging.basicConfig(filename='poll.log', level=logging.DEBUG)
