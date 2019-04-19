@@ -36,7 +36,7 @@ if not hasattr(settings, 'BARS_BY_DEFAULT'):
 if not hasattr(settings, 'BAR_IMG_URL'):
     settings.BAR_IMG_URL = None
 if not hasattr(settings, 'DEFAULT_QUESTION'):
-    settings.DEFAULT_QUESTION = None
+    settings.DEFAULT_QUESTION = ''
 if not hasattr(settings, 'DEFAULT_VOTES'):
     settings.DEFAULT_VOTES = []
 
