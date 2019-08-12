@@ -9,7 +9,7 @@ import flask_babel
 
 from poll import Poll, NoMoreVotesError, InvalidPollError
 from formatters import format_help, format_poll, format_user_vote
-from mattermost_api import user_locale
+from mattermost_api import user_locale, is_admin_user, is_team_admin
 import settings
 
 
@@ -291,6 +291,7 @@ def end_poll():
     """
     json = request.get_json()
     user_id = json['user_id']
+    team_id = json['team_id']
     poll_id = json['context']['poll_id']
     request.user_id = user_id
 
@@ -303,8 +304,14 @@ def end_poll():
         })
 
     app.logger.info('Ending poll "%s"', poll_id)
-    if user_id == poll.creator_id:
-        # only the creator may end a poll
+
+    # only the creator and admins may end a poll
+    can_end_poll = \
+        user_id == poll.creator_id or \
+        is_admin_user(user_id) or \
+        is_team_admin(user_id=user_id, team_id=team_id)
+
+    if can_end_poll:
         poll.end()
         return jsonify({
             'update': {

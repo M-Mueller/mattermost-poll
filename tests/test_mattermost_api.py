@@ -63,3 +63,61 @@ def test_user_locale_no_token(mocker):
 
     actual_locale = mattermost_api.user_locale('user1')
     assert actual_locale == 'en'
+
+
+@pytest.mark.usefixtures('set_pa_token')
+@pytest.mark.parametrize("user_id, admin", [
+    ('user1', False),
+    ('user2', False),
+    ('user3', True),
+    ('user4', True),
+    ('invalid', False),
+])
+def test_user_is_admin(mocker, user_id, admin):
+    def requests_mock(url, headers):
+        assert url == 'http://www.example.com/api/v4/users/' + user_id
+        assert headers['Authorization'] == 'Bearer 123abc456xyz'
+        if user_id == 'user1':
+            return Response(True, json.dumps({'roles': ['admin', 'whatever']}))
+        if user_id == 'user2':
+            return Response(True, json.dumps({'roles': ['team_admin']}))
+        if user_id == 'user3':
+            return Response(True, json.dumps({'roles': ['whatever', 'system_admin']}))
+        if user_id == 'user4':
+            return Response(True, json.dumps({'roles': ['whatever', 'team_admin', 'system_admin']}))
+        if user_id == 'invalid':
+            return Response(True, json.dumps({}))
+        assert False
+
+    mocker.patch('requests.get', new=requests_mock)
+
+    assert mattermost_api.is_admin_user(user_id) is admin
+
+
+@pytest.mark.usefixtures('set_pa_token')
+@pytest.mark.parametrize("user_id, team_admin", [
+    ('user1', False),
+    ('user2', True),
+    ('user3', False),
+    ('user4', True),
+    ('invalid', False),
+])
+def test_user_is_team_admin(mocker, user_id, team_admin):
+    def requests_mock(url, headers):
+        assert url == 'http://www.example.com/api/v4/teams/myteam/members/' + user_id
+        assert headers['Authorization'] == 'Bearer 123abc456xyz'
+        if user_id == 'user1':
+            return Response(True, json.dumps({'roles': ['admin', 'whatever']}))
+        if user_id == 'user2':
+            return Response(True, json.dumps({'roles': ['team_admin']}))
+        if user_id == 'user3':
+            return Response(True, json.dumps({'roles': ['whatever', 'system_admin']}))
+        if user_id == 'user4':
+            return Response(True, json.dumps({'roles': ['whatever', 'team_admin', 'system_admin']}))
+        if user_id == 'invalid':
+            return Response(True, json.dumps({}))
+        assert False
+
+    mocker.patch('requests.get', new=requests_mock)
+
+    assert mattermost_api.is_team_admin(user_id, 'myteam') is team_admin
