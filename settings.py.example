@@ -16,8 +16,10 @@ MATTERMOST_TOKENS = None
 # URL of the Mattermost server
 MATTERMOST_URL = 'http://localhost'
 
-# Optional URL to the image used for the bars.
+# URL to the image used for the bars.
 # If set to None, the poll server will provide the one in img/bar.png.
+# None will only work since Mattermost 5.8 with Image Proxy enabled.
+# If None does not work for you, try 'https://raw.githubusercontent.com/M-Mueller/mattermost-poll/master/img/bar.png'
 BAR_IMG_URL = None
 
 # Private access token of some user.

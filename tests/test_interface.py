@@ -189,6 +189,7 @@ def test_end(base_url, client, votes, expected):
     context = action_contexts[-1]
     data = json.dumps({
         'user_id': 'user0',
+        'team_id': 'team0',
         'context': context
     })
     response = client.post(action_urls[-1], data=data,
@@ -217,6 +218,7 @@ def test_end_wrong_user(base_url, client):
     context = action_contexts[-1]
     data = json.dumps({
         'user_id': 'user1',
+        'team_id': 'team0',
         'context': context
     })
     response = client.post(action_urls[-1], data=data,
@@ -228,6 +230,43 @@ def test_end_wrong_user(base_url, client):
     assert 'update' not in rd
     assert 'ephemeral_text' in rd
     assert rd['ephemeral_text'] == 'You are not allowed to end this poll'
+
+
+def patched_is_admin_user(user_id):
+    if user_id == 'user1':
+        return True
+    return False
+
+
+def test_end_admin(mocker, base_url, client):
+    mocker.patch('app.is_admin_user', new=patched_is_admin_user)
+
+    # create a new poll
+    data = {
+        'user_id': 'user0',
+        'text': 'Message'
+    }
+    response = client.post('/', data=data, base_url=base_url)
+    rd = json.loads(response.data.decode('utf-8'))
+
+    actions = rd['attachments'][0]['actions']
+    action_urls = [a['integration']['url'].replace(base_url, '')
+                   for a in actions]
+    action_contexts = [a['integration']['context'] for a in actions]
+
+    context = action_contexts[-1]
+    data = json.dumps({
+        'user_id': 'user1',
+        'team_id': 'team0',
+        'context': context
+    })
+    response = client.post(action_urls[-1], data=data,
+                           content_type='application/json',
+                           base_url=base_url)
+    assert response.status_code == 200
+
+    rd = json.loads(response.data.decode('utf-8'))
+    __validate_end_response(rd, 'Message', ['Yes', 'No'])
 
 
 def test_vote_invalid_poll(base_url, client):
@@ -251,6 +290,7 @@ def test_vote_invalid_poll(base_url, client):
 def test_end_invalid_poll(base_url, client):
     data = json.dumps({
         'user_id': 'user0',
+        'team_id': 'team0',
         'context': {
             'poll_id': 'invalid123',
             'vote': 0
