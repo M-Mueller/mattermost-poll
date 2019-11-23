@@ -5,12 +5,6 @@ TEST_SETTINGS = True
 # Path to the database file.
 DATABASE = 'poll_test.db'
 
-# Address to listen on
-WEBSERVER_ADDRESS = '0.0.0.0'
-
-# Port of the webserver
-WEBSERVER_PORT = 5005
-
 # Optional Mattermost token
 MATTERMOST_TOKENS = None
 

@@ -4,12 +4,6 @@
 # Path to the database file.
 DATABASE = 'polls.db'
 
-# Address to listen on
-WEBSERVER_ADDRESS = '0.0.0.0'
-
-# Port of the webserver
-WEBSERVER_PORT = 5000
-
 # Optional list of Mattermost tokens (list of strings e.g. ['abc123', 'xyz321'])
 MATTERMOST_TOKENS = None
 

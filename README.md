@@ -31,7 +31,7 @@ Set the "Autocomplete Hint" in the Slash Command settings to `See "/poll help" f
 - Python >= 3.6
 - Flask
 - Tornado
-- Requests
+- A WSGI server (e.g. gunicorn or uWSGI)
 
 ## Setup
 
@@ -40,7 +40,7 @@ Copy `settings.py.example` to `settings.py` and customise your settings.
 Start the server:
 
 ```bash
-python run.py
+gunicorn --workers 4 --bind :5000 app:app
 ```
 
 1. In Mattermost go to *Main Menu -> Integrations -> Slash Commands* and add a new slash command with the URL of the server including the configured port number, e.g. http://localhost:5000.
