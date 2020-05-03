@@ -21,7 +21,7 @@ babel = Babel(app)
 try:  # pragma: no cover
     if settings.APPLY_PROXY_FIX:
         # respect X-Forwarded-Proto from proxy server (see #21)
-        from werkzeug.contrib.fixers import ProxyFix
+        from werkzeug.middleware.proxy_fix import ProxyFix
         app.wsgi_app = ProxyFix(app.wsgi_app)
 except AttributeError:  # pragma: no cover
     pass
