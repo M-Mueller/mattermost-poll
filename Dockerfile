@@ -31,5 +31,7 @@ logging.basicConfig(filename='volume/poll.log', level=logging.INFO)\n\
 " >> settings.py
 
 ENV GUNICORN_CMD_ARGS="--workers 4 --bind poll:$port"
+# for running on Kubernetes we use the following ENV
+# ENV GUNICORN_CMD_ARGS="--workers 4 --bind :$port"
 
 ENTRYPOINT ["gunicorn", "app:app"]

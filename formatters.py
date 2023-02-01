@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os.path
+from PIL import Image
+import requests
 
 from flask import url_for
 from flask_babel import force_locale, gettext as tr, ngettext
@@ -154,7 +156,8 @@ def _format_vote_end_text(poll, vote_id):
             png_path = url_for('send_img', filename="bar.png", _external=True)
         bar_min_width = 2  # even 0% should show a tiny bar
         bar_width = 450*rel_vote_count/100 + bar_min_width
-        text += '![Bar]({} ={}x25) '.format(png_path, bar_width)
+        bar_img = resize_image(png_path, int(bar_width))
+        text += '![Bar]({})'.format(bar_img)
 
     votes = ngettext('%(num)d Vote', '%(num)d Votes', vote_count)
     text += '{} ({:.1f}%)'.format(votes, rel_vote_count)
@@ -164,9 +167,24 @@ def _format_vote_end_text(poll, vote_id):
 
         if len(voters):
             text += '\n' + ', '.join(voters)
-
     return text
 
+def resize_image(url, image_width):
+
+    full_path = 'img/bar.png'
+    new_image_name = 'bar-{}.png'.format(image_width)
+
+    # First we download the image
+    img_data = requests.get(url).content
+    with open(full_path, 'wb') as handler:
+       handler.write(img_data)
+
+    # Then we resize it
+    image = Image.open(full_path)
+    new_image = image.resize((image_width, 25))
+    new_image.save('img/' + new_image_name)
+
+    return url_for('send_img', filename= new_image_name, _external=True)
 
 def format_actions(poll):
     """Returns the JSON data of all available actions of the given poll.
