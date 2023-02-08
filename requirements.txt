@@ -1,3 +1,4 @@
 flask==1.0
 Flask-Babel
 requests
+Pillow

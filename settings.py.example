@@ -11,9 +11,11 @@ MATTERMOST_TOKENS = None
 MATTERMOST_URL = 'http://localhost'
 
 # URL to the image used for the bars.
-# If set to None, the poll server will provide the one in img/bar.png.
+# If set to None, the poll server will provide the one in img/bar.png
+# and resize it automatically to the required size.
 # None will only work since Mattermost 5.8 with Image Proxy enabled.
 # If None does not work for you, try 'https://raw.githubusercontent.com/M-Mueller/mattermost-poll/master/img/bar.png'
+# Only None will work correctly in the native mattermost apps, because resizing images with markdown is not supported.
 BAR_IMG_URL = None
 
 # Private access token of some user.

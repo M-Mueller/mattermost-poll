@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 import warnings
 import logging
+import re
+import io
+import os.path
 from collections import namedtuple
 
-from flask import Flask, request, jsonify, abort, send_from_directory
+import PIL.Image
+
+from flask import Flask, request, jsonify, abort, send_file
 from flask_babel import Babel, gettext as tr
 import flask_babel
 
@@ -119,7 +124,7 @@ def log_response(response):
     """Logs the complete response for debugging."""
     if app.logger.isEnabledFor(logging.DEBUG):
         app.logger.debug('Response status: %s', response.status)
-        if not response.direct_passthrough:  # excludes send_from_directory
+        if not response.direct_passthrough:  # excludes send_file
             app.logger.debug('Response data: %s',
                              response.get_data().decode('utf-8'))
     return response
@@ -324,6 +329,20 @@ def end_poll():
     })
 
 
+bar_image_pattern = re.compile("^bar_(\d{1,3}).png$")
+bar_image = PIL.Image.open(os.path.join(app.root_path, 'img', 'bar.png'))
+
+
 @app.route('/img/<path:filename>')
 def send_img(filename):
-    return send_from_directory('img', filename)
+    match = re.match(bar_image_pattern, filename)
+    if match:
+        # resize the 1px template image to the requested width
+        bar_width = int(match[1])
+        bar_resized = bar_image.resize((bar_width, bar_image.height))
+        buffer = io.BytesIO()
+        bar_resized.save(buffer, "PNG")
+        buffer.seek(0)
+        return send_file(buffer, mimetype="image/png")
+    else:
+        raise ValueError("Invalid bar image path")
