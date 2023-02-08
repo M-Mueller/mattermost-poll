@@ -6,6 +6,11 @@ from poll import Poll
 from test_utils import force_settings
 
 
+def default_img_url(rel_width):
+    width = int(max(2, rel_width*450))
+    return 'http://localhost:5005/img/bar_{}.png'.format(width)
+
+
 @pytest.mark.parametrize('votes, secret, exp_actions', [
     ([], False, ['Yes (0)', 'No (0)']),
     ([0, 0, 0, 1, 1], False, ['Yes (3)', 'No (2)']),
@@ -242,7 +247,6 @@ def test_format_poll_running_public_bars(mocker):
     assert ":warning:" in fields[1]['value']
 
     users = ['user0', 'user1', 'user2', 'user3']
-    img_url = 'http://localhost:5005/img/bar.png'
     expected = [
         (poll.vote_options[1], '1 Vote (25.0%)', 0.25, ['user1']),
         (poll.vote_options[2], '3 Votes (75.0%)', 0.75, ['user0', 'user2', 'user3']),
@@ -254,7 +258,7 @@ def test_format_poll_running_public_bars(mocker):
         assert not field['short']
         assert title == field['title']
         assert value in field['value']
-        image = '![Bar]({} ={}x25)'.format(img_url, bar_length*450 + 2)
+        image = '![Bar]({})'.format(default_img_url(bar_length))
         assert image in field['value']
         for user in users:
             assert user in field['value']
@@ -461,7 +465,6 @@ def test_format_poll_finished_bars(mocker):
     assert fields[0]['value'] == '*Number of voters: 4*'
 
     users = ['user0', 'user1', 'user2', 'user3']
-    img_url = 'http://localhost:5005/img/bar.png'
     expected = [
         (poll.vote_options[0], '1 Vote (25.0%)', 0.25),
         (poll.vote_options[1], '1 Vote (25.0%)', 0.25),
@@ -474,7 +477,7 @@ def test_format_poll_finished_bars(mocker):
         assert not field['short']
         assert title == field['title']
         assert value in field['value']
-        image = '![Bar]({} ={}x25)'.format(img_url, bar_length*450 + 2)
+        image = '![Bar]({})'.format(default_img_url(bar_length))
         assert image in field['value']
         for user in users:
             assert user not in field['value']
@@ -520,7 +523,6 @@ def test_format_poll_finished_public_bars(mocker):
     assert not fields[0]['title']
     assert fields[0]['value'] == '*Number of voters: 4*'
 
-    img_url = 'http://localhost:5005/img/bar.png'
     expected = [
         (poll.vote_options[0], '1 Vote (25.0%)', 0.25, ['user0']),
         (poll.vote_options[1], '1 Vote (25.0%)', 0.25, ['user1']),
@@ -533,7 +535,7 @@ def test_format_poll_finished_public_bars(mocker):
         assert not field['short']
         assert title == field['title']
         assert value in field['value']
-        image = '![Bar]({} ={}x25)'.format(img_url, bar_length*450 + 2)
+        image = '![Bar]({})'.format(default_img_url(bar_length))
         assert image in field['value']
         for user in users:
             assert user in field['value']
@@ -565,8 +567,9 @@ def test_format_poll_bars_absolute_url(mocker):
         attachments = poll_dict['attachments']
         fields = attachments[0]['fields']
 
-        for field in fields[1:]:
-            assert img_url in field['value']
+        for field, bar_length in zip(fields[1:], [0.25, 0.25, 0.5]):
+            image = '![Bar]({} ={}x25)'.format(img_url, int(max(2, bar_length*450)))
+            assert image in field['value']
             assert 'localhost' not in field['value']
 
 
