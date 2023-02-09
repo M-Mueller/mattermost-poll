@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 import json
+import io
 import jsonschema
+import PIL.Image
 import pytest
 import app
 import settings
@@ -421,3 +423,19 @@ def test_mattermost_tokens_legacy(base_url, client):
     assert rd['response_type'] != 'ephemeral'
 
     assert settings.MATTERMOST_TOKENS == ['abc123']
+
+def test_send_img_resizes_images(client):
+    response = client.get('/img/bar_110.png')
+    assert response.status_code == 200
+
+    buffer = io.BytesIO(response.data)
+
+    image = PIL.Image.open(buffer, formats=["PNG"])
+    assert image.size == (110, 25)
+
+def test_send_img_rejects_invalid_path(client):
+    response = client.get('/img/bar.png')
+    assert response.status_code == 400
+
+    response = client.get('/img/bar_10000000.png')
+    assert response.status_code == 400

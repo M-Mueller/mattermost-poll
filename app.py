@@ -329,7 +329,7 @@ def end_poll():
     })
 
 
-bar_image_pattern = re.compile("^bar_(\d{1,3}).png$")
+bar_image_pattern = re.compile(r"^bar_(\d{1,3}).png$")
 bar_image = PIL.Image.open(os.path.join(app.root_path, 'img', 'bar.png'))
 
 
@@ -345,4 +345,4 @@ def send_img(filename):
         buffer.seek(0)
         return send_file(buffer, mimetype="image/png")
     else:
-        raise ValueError("Invalid bar image path")
+        abort(400)
