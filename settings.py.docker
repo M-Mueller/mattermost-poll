@@ -1,0 +1,19 @@
+"""This file contains all user settings of the application"""
+
+import os
+import logging
+
+
+DATABASE = os.environ.get("DATABASE", "polls.db")
+MATTERMOST_TOKENS = os.environ.get("MATTERMOST_TOKENS", None)
+MATTERMOST_URL = os.environ.get("MATTERMOST_URL", "http://localhost")
+BAR_IMG_URL = os.environ.get("BAR_IMG_URL", None)
+MATTERMOST_PA_TOKEN = os.environ.get("ST_PA_TOKEN", None)
+PUBLIC_BY_DEFAULT = os.environ.get("PUBLIC_BY_DEFAULT", False)
+PROGRESS_BY_DEFAULT = os.environ.get("PROGRESS_BY_DEFAULT", True)
+BARS_BY_DEFAULT = os.environ.get("BARS_BY_DEFAULT", True)
+DEFAULT_QUESTION = os.environ.get("DEFAULT_QUESTION", "")
+DEFAULT_VOTES = os.environ.get("DEFAULT_VOTES", [])
+APPLY_PROXY_FIX = os.environ.get("APPLY_PROXY_FIX", False)
+
+logging.basicConfig(level=logging.INFO)

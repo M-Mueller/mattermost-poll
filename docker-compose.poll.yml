@@ -1,0 +1,21 @@
+version: "2.4"
+
+services:
+  poll:
+    depends_on:
+      - mattermost
+    image: mattermost-poll
+    restart: ${RESTART_POLICY}
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
+    read_only: ${MATTERMOST_CONTAINER_READONLY}
+    tmpfs:
+      - /tmp
+    volumes:
+      - ${MATTERMOST_POLL_PATH}:/app/volume:rw
+    environment:
+      - DATABASE=/app/volume/polls.db
+      - MATTERMOST_TOKENS=${MATTERMOST_POLL_TOKENS}
+      - MATTERMOST_PA_TOKEN=${MATTERMOST_POLL_PA_TOKEN}
+      - MATTERMOST_URL=${MM_SERVICESETTINGS_SITEURL}
