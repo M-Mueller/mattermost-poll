@@ -39,9 +39,9 @@ Set the "Autocomplete Hint" in the Slash Command settings to `See "/poll help" f
 1. Copy the generated token.
 1. Copy `settings.py.example` to `settings.py` and customise your settings. Paste the token from the previous step in `MATTERMOST_TOKENS`.
 1. Start the server:
-```bash
-gunicorn --workers 4 --bind :5000 app:app
-```
+   ```bash
+   gunicorn --workers 4 --bind :5000 app:app
+   ```
 1. You might need to add the hostname of the poll server (e.g. `localhost`) to "System Settings > Developer > Allow untrusted internal connections to".
 
 To resolve usernames in `--public` polls and to provide localization, the server needs access to the
@@ -52,22 +52,22 @@ Mattermost API. For this a [personal access token](https://docs.mattermost.com/d
 To integrate with [mattermost-docker](https://github.com/mattermost/docker):
 
 1. Build the docker image:
-```bash
-git clone https://github.com/M-Mueller/mattermost-poll.git
-cd mattermost-poll
-docker build -t mattermost-poll .
-```
+   ```bash
+   git clone https://github.com/M-Mueller/mattermost-poll.git
+   cd mattermost-poll
+   docker build -t mattermost-poll .
+   ```
 1. Create the integration in mattermost (see above). As URL use `http://poll:5000` and add `poll` to the allowed untrusted connections. Also enable "Image Proxy" (see `BAR_IMG_URL ` in [settings.py.example](settings.py.example) for details)
 1. Copy [docker-compose.poll.yml](docker-compose.poll.yml) to the mattermost docker directory.
 1. Add the following two lines to your `.env`:
-```
-MATTERMOST_POLL_PATH=./volumes/poll
-MATTERMOST_POLL_TOKENS="['<your-integration-token>']"
-MATTERMOST_POLL_PA_TOKEN="<your-access-token>"
-```
+   ```
+   MATTERMOST_POLL_PATH=./volumes/poll
+   MATTERMOST_POLL_TOKENS="['<your-integration-token>']"
+   MATTERMOST_POLL_PA_TOKEN="<your-access-token>"
+   ```
 1. Include the service in the startup, e.g.:
-```
-docker compose -f docker-compose.yml -f docker-compose.without-nginx.yml -f docker-compose.poll.yml up
-```
+   ```
+   docker compose -f docker-compose.yml -f docker-compose.without-nginx.yml -f docker-compose.poll.yml up
+   ```
 
 The docker image reads all it's settings from environment variables (or uses a default value). See [settings.py.docker](settings.py.docker) for all available variables.
