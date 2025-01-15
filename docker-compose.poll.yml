@@ -4,7 +4,7 @@ services:
   poll:
     depends_on:
       - mattermost
-    image: mattermost-poll
+    image: ghcr.io/m-mueller/mattermost-poll
     restart: ${RESTART_POLICY}
     security_opt:
       - no-new-privileges:true

@@ -1,6 +1,6 @@
 # Mattermost Poll
 
-[![Build Status](https://travis-ci.com/M-Mueller/mattermost-poll.svg?branch=master)](https://travis-ci.com/M-Mueller/mattermost-poll) [![codecov](https://codecov.io/gh/M-Mueller/mattermost-poll/branch/master/graph/badge.svg)](https://codecov.io/gh/M-Mueller/mattermost-poll)
+[![codecov](https://codecov.io/gh/M-Mueller/mattermost-poll/branch/master/graph/badge.svg)](https://codecov.io/gh/M-Mueller/mattermost-poll)
 
 Provides a slash command to create polls in Mattermost.
 
@@ -51,12 +51,6 @@ Mattermost API. For this a [personal access token](https://docs.mattermost.com/d
 
 To integrate with [mattermost-docker](https://github.com/mattermost/docker):
 
-1. Build the docker image:
-   ```bash
-   git clone https://github.com/M-Mueller/mattermost-poll.git
-   cd mattermost-poll
-   docker build -t mattermost-poll .
-   ```
 1. Create the integration in mattermost (see above). As URL use `http://poll:5000` and add `poll` to the allowed untrusted connections. Also enable "Image Proxy" (see `BAR_IMG_URL ` in [settings.py.example](settings.py.example) for details)
 1. Copy [docker-compose.poll.yml](docker-compose.poll.yml) to the mattermost docker directory.
 1. Add the following two lines to your `.env`:
