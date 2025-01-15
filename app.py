@@ -225,7 +225,7 @@ def poll():
             return jsonify({
                 'response_type': 'ephemeral',
                 'text': tr("Public polls are not available with the "
-                           "current setup. Please check with you "
+                           "current setup. Please check with your "
                            "system administrator.")
             })
 
