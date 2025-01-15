@@ -16,11 +16,20 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.10
+
+    - name: 'Login to GitHub Container Registry'
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{github.actor}}
+        password: ${{secrets.GITHUB_TOKEN}}
+
+    - name: 'Set up Python 3.10'
       uses: actions/setup-python@v3
       with:
         python-version: "3.10"
-    - name: Install dependencies
+
+    - name: 'Install dependencies'
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
@@ -30,7 +39,7 @@ jobs:
       run: |
         python -m pytest --cov-report xml --cov=app --cov=poll --cov=formatters --cov=mattermost_api
 
-    - name: Codecov Report
+    - name: 'Codecov Report'
       uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
@@ -39,3 +48,20 @@ jobs:
         flags: unittests
         fail_ci_if_error: true
         verbose: true
+
+    - name: 'Build Docker Image'
+      id: docker_build
+      run: |
+        image_tag="ghcr.io/m-mueller/mattermost-poll"
+        if [ "${{ github.ref }}" == "refs/tags/v*" ]; then
+          image_tag="$image_tag:$(echo ${{ github.ref }} | sed 's^refs/tags/v^^')"
+        else
+          image_tag="$image_tag:latest"
+        fi
+        
+        echo "image_tag=$image_tag" >> $GITHUB_OUTPUT
+        docker build . --tag $image_tag
+
+    - name: 'Push Docker Image'
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      run: docker push ${{ steps.docker_build.output.image_tag }}
